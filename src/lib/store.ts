@@ -56,6 +56,10 @@ function readSettings(): Settings {
   }
   return cache;
 }
+/** Current settings outside React render (always the stored values, never the SSR default). */
+export function getSettings(): Settings {
+  return readSettings();
+}
 export function saveSettings(next: Settings) {
   cache = next;
   safeSet(SETTINGS_KEY, next);

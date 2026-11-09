@@ -53,7 +53,17 @@ export interface Analysis {
   context: string;
   sentences: Sentence[];
   results: Record<number, SentenceResult>;
-  overall: { probability: number; confidence: 'low' | 'medium' | 'high'; summary?: string };
+  overall: {
+    probability: number;
+    confidence: 'low' | 'medium' | 'high';
+    summary?: string;
+    /** Share of words the model has checked (0-1). Older saved analyses lack it. */
+    coverage?: number;
+    /** 'model' = rests on model verdicts; 'local' = lexical rules only (no verdict shown). */
+    basis?: 'model' | 'local';
+    /** Share of (checked) words in sentences scoring ≥60. */
+    flaggedShare?: number;
+  };
   stats: DocStats;
   meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string };
   /** Original file kept in IndexedDB (key = analysis id) so the formatted Word view can be rendered. */

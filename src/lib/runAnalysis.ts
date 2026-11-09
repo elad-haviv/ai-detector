@@ -85,7 +85,7 @@ export async function enrich(
 ): Promise<Analysis> {
   let a = analysis;
   const targets = onlyIds ? a.sentences.filter((s) => onlyIds.has(s.id)) : a.sentences;
-  const chunks = chunkSentences(targets);
+  const chunks = chunkSentences(targets, 30, 900);
   const progress: Progress = { chunks: chunks.map((c) => ({ status: 'pending', size: c.length })) };
   const lang = explanationLang(settings, a.sentences.map((s) => s.text).join(' '));
   const llmOverall: number[] = [];
@@ -171,7 +171,7 @@ export async function enrich(
   const worker = async () => {
     while (next < chunks.length && !signal.aborted) await runChunk(next++);
   };
-  await Promise.all([worker(), worker()]);
+  await Promise.all(Array.from({ length: Math.min(4, chunks.length) }, worker));
   return a;
 }
 

@@ -289,3 +289,10 @@ input[type="range"] {
   padding: 0;
   border-radius: 0;
 }
+
+/* sentence has matched patterns but is below the threshold: quiet hint, no background */
+.sent.hint {
+  text-decoration: underline dotted var(--text-muted);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+}

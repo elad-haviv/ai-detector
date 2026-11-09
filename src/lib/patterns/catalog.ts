@@ -1313,7 +1313,7 @@ export const PATTERNS: Pattern[] = [
     source: ['wikipedia', 'humanizer'],
     regex: {
       en: [
-        String.raw`[,;—–]\s*(?:thereby\s+|thus\s+|further\s+)?(?:highlighting|underscoring|emphasizing|emphasising|reflecting|symbolizing|symbolising|showcasing|illustrating|demonstrating|signaling|signalling|contributing\s+to|fostering|ensuring|cultivating|encompassing|enhancing|embodying|solidifying|reinforcing|cementing|confirming|paving\s+the\s+way|marking|underlining)\b`,
+        String.raw`[,;—–]\s*(?:thereby\s+|thus\s+|further\s+)?(?:highlighting|underscoring|emphasizing|emphasising|reflecting|symbolizing|symbolising|showcasing|illustrating|demonstrating|signaling|signalling|contributing\s+to|fostering|ensuring|cultivating|encompassing|enhancing|embodying|solidifying|reinforcing|cementing|confirming|providing|offering|enabling|paving\s+the\s+way|marking|underlining)\b`,
       ],
       he: [
         String.raw`[,;]\s*(?:ובכך\s+|ובזאת\s+|וכך\s+|דבר\s+[הש]?|מה\s+ש)(?:מדגיש|מדגישה|מדגישים|ממחיש|ממחישה|ממחישים|משקף|משקפת|משקפים|מעיד|מעידה|מעידים|תורם|תורמת|תורמים|מבטיח|מבטיחה|מחזק|מחזקת|מחזקים|מסמל|מסמלת|מבליט|מבליטה|מטפח|מטפחת|סולל|סוללת|מבסס|מבססת|מקבע|מקבעת)${HE}`,

@@ -9,29 +9,60 @@ import { BandLegend, CONFIDENCE_LABEL, ScoreRing, scoreBand } from './shared';
 export const CATEGORIES: PatternCategory[] = ['vocabulary', 'structure', 'tone', 'formatting', 'rhetoric', 'citation', 'filler'];
 
 export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pending: boolean; dirty: boolean }) {
-  const p = analysis.overall.probability;
-  const band = scoreBand(p);
+  const o = analysis.overall;
+  const local = o.basis === 'local' || (!o.basis && !analysis.meta.provider);
+  const coverage = o.coverage ?? 1;
+  const partial = !local && coverage < 0.98;
+  const band = scoreBand(o.probability);
+  const hits = Object.values(analysis.results).filter((r) => r.hits.length).length;
   return (
     <div className="card p-4">
       <div className="flex items-center gap-4">
-        <ScoreRing value={p} />
+        <ScoreRing value={o.probability} pending={local && pending} />
         <div>
-          <div className="text-[13px] text-muted">{he.results.overallLabel}</div>
-          <div className="text-[17px] font-bold">{band.label}</div>
+          <div className="text-[13px] text-muted">סבירות לכתיבה בסגנון AI</div>
+          <div className="text-[17px] font-bold">{local ? 'ניתוח מקומי בלבד' : band.label}</div>
           <div className="text-[13px] text-muted">
-            {CONFIDENCE_LABEL[analysis.overall.confidence]}
-            {pending && ' · זמני'}
-            {!analysis.meta.provider && ' · ניתוח מקומי בלבד'}
+            {CONFIDENCE_LABEL[o.confidence]}
+            {partial && ` · נותחו ${Math.round(coverage * 100)}% מהטקסט`}
+            {pending && !partial && !local && ' · זמני'}
           </div>
         </div>
       </div>
-      <p className="mt-3 text-[14px]">{band.description}</p>
-      {analysis.overall.summary && (
+
+      {local ? (
+        <p className="mt-3 rounded-md bg-surface-2 p-2 text-[13px]">
+          {pending
+            ? 'מודל השפה עדיין קורא את הטקסט. עד שיחזרו תוצאות, המספר מבוסס רק על ביטויים מוכרים ואינו הערכה של הטקסט כולו.'
+            : `המספר מבוסס רק על כללים מקומיים, שמזהים ביטויים מובהקים (נמצאו ב-${hits} משפטים). הם לא יודעים לזהות טקסט AI שכתוב "נקי", ולכן ציון נמוך כאן לא אומר שהטקסט אנושי. לניתוח אמיתי צריך לחבר ספק מודל בהגדרות.`}
+        </p>
+      ) : (
+        <p className="mt-3 text-[14px]">{band.description}</p>
+      )}
+
+      {!local && (
+        <p className="mt-2 text-[13px] text-muted">
+          {Math.round((o.flaggedShare ?? 0) * 100)}% מהטקסט שנבדק נמצא במשפטים עם סבירות 60% ומעלה.
+          {partial && ' הציון יתעדכן כשהניתוח יסתיים.'}
+        </p>
+      )}
+
+      {analysis.overall.summary && !local && (
         <p dir="auto" className="mt-2 border-t border-border pt-2 text-[14px] text-muted">
           {analysis.overall.summary}
         </p>
       )}
       {dirty && <p className="mt-2 text-[13px] font-semibold text-warning">בוצעו שינויים. כדאי להריץ ניתוח מחדש.</p>}
+
+      <details className="mt-3 text-[12px] text-muted">
+        <summary className="cursor-pointer font-semibold">מה המספר אומר?</summary>
+        <p className="mt-1 leading-relaxed">
+          זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. היא משקללת את ממוצע הציונים של המשפטים (לפי אורכם) עם החלק
+          של הטקסט שנמצא במשפטים בעלי סבירות גבוהה. כל משפט מקבל ציון משלושה מקורות: מודל השפה (60%), מודל ההחלטה (25%) והכללים
+          המקומיים (15%). משפטים שהמודל עוד לא בדק לא נכנסים לחישוב. בלי מודל, המספר נשען רק על הכללים המקומיים ולכן אינו מבחין בין
+          אנושי ל-AI.
+        </p>
+      </details>
       <div className="mt-3">
         <BandLegend />
       </div>

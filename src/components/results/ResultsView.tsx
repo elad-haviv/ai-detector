@@ -65,7 +65,7 @@ export function ResultsView(props: Props) {
       const band = visible(r) ? bandOf(r.probability, threshold) : 0;
       const showBadge = band >= 2 || (band === 1 && settings.alwaysShowPercent);
       return {
-        cls: [band ? `b${band}` : '', r?.status === 'pending' ? 'pending' : '', r?.status === 'failed' ? 'failed' : '', r?.edited ? 'edited' : '', r?.ignored ? 'dim' : '']
+        cls: [band ? `b${band}` : '', !band && r?.hits.length && !r.ignored ? 'hint' : '', r?.status === 'pending' ? 'pending' : '', r?.status === 'failed' ? 'failed' : '', r?.edited ? 'edited' : '', r?.ignored ? 'dim' : '']
           .filter(Boolean)
           .join(' '),
         badge: r?.edited ? { text: '✎ נערך', cls: '!border !border-accent !text-accent' } : showBadge ? { text: `${r.probability}%`, cls: `b${band}` } : undefined,
@@ -240,7 +240,8 @@ export function ResultsView(props: Props) {
         <ScoreRing value={analysis.overall.probability} size={36} stroke={4} />
         <div className="min-w-0 text-[14px] leading-tight">
           <div className="font-bold">
-            {analysis.overall.probability}% · {CONFIDENCE_LABEL[analysis.overall.confidence]}
+            {analysis.overall.basis === 'local' ? 'ניתוח מקומי בלבד' : `${analysis.overall.probability}% · ${CONFIDENCE_LABEL[analysis.overall.confidence]}`}
+            {analysis.overall.basis === 'model' && (analysis.overall.coverage ?? 1) < 0.98 && ` · נותחו ${Math.round((analysis.overall.coverage ?? 0) * 100)}%`}
           </div>
           <div className="truncate text-[12px] text-muted">
             {running ? 'מנתח…' : he.results.sentencesFlagged.replace('{flagged}', String(flaggedIds.length)).replace('{total}', String(analysis.sentences.length))}
@@ -328,6 +329,7 @@ export function ResultsView(props: Props) {
                     const cls = [
                       'sent',
                       band ? `b${band}` : '',
+                      !band && r?.hits.length && !r.ignored ? 'hint' : '',
                       r?.status === 'pending' ? 'pending' : '',
                       r?.status === 'failed' ? 'failed' : '',
                       r?.edited ? 'edited' : '',

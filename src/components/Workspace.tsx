@@ -6,7 +6,7 @@ import { applyRewrite, enrich, initialAnalysis, type Progress } from '@/lib/runA
 import { segment } from '@/lib/segment';
 import { putFile } from '@/lib/blobStore';
 import { readBlocks, sentencesFromBlocks } from '@/lib/docx/model';
-import { getFromHistory, hasKey, saveToHistory, useSettings } from '@/lib/store';
+import { getFromHistory, getSettings, hasKey, saveToHistory, useSettings } from '@/lib/store';
 import type { Analysis } from '@/lib/types';
 import { InputPanel } from './InputPanel';
 import { ResultsView } from './results/ResultsView';
@@ -18,6 +18,9 @@ export function Workspace() {
   const [running, setRunning] = useState(false);
   const [dirty, setDirty] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const currentIdRef = useRef<string | null>(null);
+  // stop in-flight requests when leaving the page; saved progress lets the next visit resume
+  useEffect(() => () => abortRef.current?.abort(), []);
   const params = useSearchParams();
   const router = useRouter();
 
@@ -25,8 +28,15 @@ export function Workspace() {
   useEffect(() => {
     const id = params.get('id');
     if (id) {
+      if (currentIdRef.current === id) return; // already showing it (e.g. right after starting)
       const a = getFromHistory(id);
-      if (a) setAnalysis(a);
+      if (a) {
+        currentIdRef.current = id;
+        setAnalysis(a);
+        // An analysis interrupted by a reload/navigation still has pending sentences: resume them.
+        const pending = new Set(Object.values(a.results).filter((r) => r.status === 'pending').map((r) => r.id));
+        if (pending.size && hasKey(getSettings())) run(a, pending);
+      }
     }
   }, [params]);
 
@@ -34,9 +44,11 @@ export function Workspace() {
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    currentIdRef.current = a.id;
     setAnalysis(a);
     setDirty(false);
     saveToHistory(a);
+    const settings = getSettings();
     if (!hasKey(settings)) return;
     setRunning(true);
     try {
@@ -46,6 +58,8 @@ export function Workspace() {
         (next, p) => {
           setAnalysis(next);
           setProgress(p);
+          // persist after every finished chunk so an interrupted run can resume where it stopped
+          if (p.chunks.some((c) => c.status === 'done' || c.status === 'failed')) saveToHistory(next);
         },
         ctrl.signal,
         onlyIds,
@@ -74,7 +88,7 @@ export function Workspace() {
 
   function reanalyze() {
     if (!analysis) return;
-    const edited = new Set(Object.values(analysis.results).filter((r) => r.edited || r.status === 'failed').map((r) => r.id));
+    const edited = new Set(Object.values(analysis.results).filter((r) => r.edited || r.status === 'failed' || r.status === 'pending').map((r) => r.id));
     const fresh = initialAnalysis('', analysis.title, analysis.context, settings);
     const base: Analysis = {
       ...analysis,
@@ -140,6 +154,7 @@ export function Workspace() {
         setRunning(false);
         setAnalysis(null);
         setProgress(null);
+        currentIdRef.current = null;
         router.replace('/');
       }}
     />

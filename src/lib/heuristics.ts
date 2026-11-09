@@ -1,5 +1,5 @@
 import { PATTERNS, type Pattern } from './patterns/catalog';
-import type { DocStats, PatternHit, Sentence, SentenceResult } from './types';
+import type { Analysis, DocStats, PatternHit, Sentence, SentenceResult } from './types';
 import { countWords } from './segment';
 
 export const HEURISTICS_VERSION = 'h1';
@@ -149,38 +149,44 @@ export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>)
   return Math.round(Math.max(0, Math.min(100, p)));
 }
 
+/**
+ * Document score. Once any sentence has a model verdict, only model-checked sentences count:
+ * unchecked sentences carry only weak lexical evidence and would drag the score toward 0.
+ * `coverage` is the share of words the model has checked; `basis` says what the number rests on.
+ */
 export function overallScore(
   sentences: Sentence[],
   results: Record<number, SentenceResult>,
   llmOverall?: number,
-): { probability: number; confidence: 'low' | 'medium' | 'high' } {
+): Analysis['overall'] {
+  const all = sentences.filter((s) => results[s.id] && !results[s.id].ignored);
+  const totalWords = all.reduce((a, s) => a + Math.max(1, s.words), 0);
+  const checked = all.filter((s) => results[s.id].llm !== undefined || results[s.id].decision !== undefined);
+  const basis: 'model' | 'local' = checked.length ? 'model' : 'local';
+  const pool = basis === 'model' ? checked : all;
+
   let wsum = 0;
   let acc = 0;
   let flaggedWords = 0;
   let disagreement = 0;
-  let withLlm = 0;
-  for (const s of sentences) {
+  for (const s of pool) {
     const r = results[s.id];
-    if (!r || r.ignored) continue;
     const w = Math.max(1, s.words);
     wsum += w;
     acc += r.probability * w;
     if (r.probability >= 60) flaggedWords += w;
-    if (r.llm !== undefined) {
-      withLlm++;
-      const other = r.decision ?? r.heuristic;
-      disagreement += Math.abs(r.llm - other);
-    }
+    if (r.llm !== undefined) disagreement += Math.abs(r.llm - (r.decision ?? r.heuristic));
   }
-  if (!wsum) return { probability: 0, confidence: 'low' };
-  let p = 0.6 * (acc / wsum) + 0.4 * ((flaggedWords / wsum) * 100);
-  if (llmOverall !== undefined) p = 0.6 * p + 0.4 * llmOverall;
-  const words = sentences.reduce((a, s) => a + s.words, 0);
-  const avgDis = withLlm ? disagreement / withLlm : 100;
+  if (!wsum) return { probability: 0, confidence: 'low', coverage: 0, basis, flaggedShare: 0 };
+  const flaggedShare = flaggedWords / wsum;
+  let p = 0.6 * (acc / wsum) + 0.4 * flaggedShare * 100;
+  if (llmOverall !== undefined && basis === 'model') p = 0.6 * p + 0.4 * llmOverall;
+  const coverage = basis === 'model' ? wsum / totalWords : 0;
+  const avgDis = checked.length ? disagreement / checked.length : 100;
   let confidence: 'low' | 'medium' | 'high' = 'medium';
-  if (!withLlm || words < 120 || avgDis > 40) confidence = 'low';
-  else if (words >= 300 && avgDis < 22 && withLlm >= sentences.length * 0.9) confidence = 'high';
-  return { probability: Math.round(p), confidence };
+  if (basis === 'local' || wsum < 120 || avgDis > 40 || coverage < 0.5) confidence = 'low';
+  else if (wsum >= 300 && avgDis < 22 && coverage >= 0.9) confidence = 'high';
+  return { probability: Math.round(p), confidence, coverage: Math.round(coverage * 100) / 100, basis, flaggedShare: Math.round(flaggedShare * 100) / 100 };
 }
 
 export function sensitivityThreshold(s: 'low' | 'medium' | 'high'): number {
