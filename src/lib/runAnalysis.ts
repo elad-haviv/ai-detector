@@ -1,7 +1,11 @@
 'use client';
 import { HEURISTICS_VERSION, blend, computeStats, documentPrior, findHits, heuristicResults, heuristicScore, localDocument, overallScore, sentencePrior } from './heuristics';
 import { chunkSentences, detectLang, segment } from './segment';
-import { hasKey } from './store';
+import { getKey } from './keyStore';
+import { getAccount } from './account';
+import { llmMode } from './store';
+import { currentLocale } from './i18n/dom';
+import { getDict } from './i18n';
 import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, AssessRequest, AssessResponse, DocumentAssessment, Lang, Sentence, SentenceResult, Settings } from './types';
 
 export type ChunkStatus = 'pending' | 'running' | 'done' | 'failed';
@@ -13,8 +17,11 @@ export function newId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/** Language for model explanations: the UI language ('ui', default), the text's language ('auto'), or a fixed one. */
 export function explanationLang(s: Settings, text: string): Lang {
-  return s.explanationLanguage === 'auto' ? detectLang(text) : s.explanationLanguage;
+  if (s.explanationLanguage === 'auto') return detectLang(text);
+  if (s.explanationLanguage === 'ui') return currentLocale();
+  return s.explanationLanguage;
 }
 
 /** Build an analysis with instant local results; LLM results are added by `enrich`. */
@@ -27,12 +34,14 @@ export function initialAnalysis(
 ): Analysis {
   const sentences = opts?.sentences ?? segment(text);
   const results = heuristicResults(sentences);
-  const llmOn = hasKey(settings);
+  const mode = llmMode(settings);
+  const llmOn = mode !== null;
+  const managed = mode === 'managed' ? getAccount().managed : undefined;
   if (llmOn) for (const r of Object.values(results)) r.status = 'pending';
   const document: DocumentAssessment = { ...localDocument(sentences, results), status: llmOn ? 'pending' : 'local' };
   return {
     id: newId(),
-    title: title.trim() || shortTitle(sentences[0]?.text || '') || 'ללא כותרת',
+    title: title.trim() || shortTitle(sentences[0]?.text || '') || getDict(currentLocale()).input.untitled,
     createdAt: Date.now(),
     context,
     sentences,
@@ -41,10 +50,12 @@ export function initialAnalysis(
     stats: computeStats(sentences),
     document,
     meta: {
-      provider: llmOn ? settings.provider : undefined,
-      model: llmOn ? settings.models[settings.provider] : undefined,
-      decisionModel: llmOn && settings.useDecisionModel && settings.keys.openrouter ? settings.decisionModel : undefined,
+      provider: mode === 'byok' ? settings.provider : managed?.provider,
+      model: mode === 'byok' ? settings.models[settings.provider] : managed?.model,
+      // Pro: the server's OpenRouter key powers the decision model when the user has none of their own.
+      decisionModel: llmOn && settings.useDecisionModel && (mode === 'managed' || getKey('openrouter')) ? settings.decisionModel : undefined,
       heuristicsVersion: HEURISTICS_VERSION,
+      mode: mode ?? undefined,
     },
     source: opts?.source,
   };
@@ -126,13 +137,13 @@ export async function enrich(
     emit();
     const body: AssessRequest = {
       provider: settings.provider,
-      apiKey: settings.keys[settings.provider],
+      apiKey: getKey(settings.provider), // undefined without a key of your own: a Pro request (server picks the model)
       model: settings.models[settings.provider],
       paragraphs: documentParagraphs(a),
       features: local.features,
       explanationLanguage: lang,
       decisionModel: a.meta.decisionModel,
-      openrouterKey: settings.keys.openrouter,
+      openrouterKey: getKey('openrouter'),
     };
     try {
       let json: AssessResponse = {};
@@ -169,13 +180,13 @@ export async function enrich(
     emit();
     const body: AnalyzeChunkRequest = {
       provider: settings.provider,
-      apiKey: settings.keys[settings.provider],
+      apiKey: getKey(settings.provider), // undefined without a key of your own: a Pro request (server picks the model)
       model: settings.models[settings.provider],
       sentences: chunk.map((s) => ({ id: s.id, text: s.text })),
       context: contextFor(a, chunk),
       explanationLanguage: lang,
       decisionModel: a.meta.decisionModel,
-      openrouterKey: settings.keys.openrouter,
+      openrouterKey: getKey('openrouter'),
     };
     let data: AnalyzeChunkResponse | null = null;
     let err: string | undefined;

@@ -1,23 +1,196 @@
 /**
- * Hebrew UI microcopy.
+ * Hebrew UI microcopy: the source dictionary. Its shape defines `Dict`, so en.ts fails to compile
+ * when a key is missing or extra. Add a string here first, then in en.ts (see docs/design-spec.md §14).
  *
- * App name: "קולמוס" (the scholar's pen; short, literary, not tied to "AI").
- * Alternatives considered:
- *   - "כתב יד"     : stresses the human hand behind the text
- *   - "טביעת עט"   : a play on "טביעת אצבע", the writer's own trace
- *   - "שורה אחר שורה" : describes the sentence-by-sentence method
+ * App name: "טביעת עט" in Hebrew, "Penprint" in English: a play on "fingerprint", the writer's own trace.
  *
- * Interpolation: {name} placeholders are replaced by the app.
+ * Interpolation: {name} placeholders, filled with `fmt()` from '@/lib/i18n'.
  */
 export const he = {
-  appName: 'קולמוס',
+  appName: 'טביעת עט',
   tagline: 'לראות איפה הטקסט נשמע מכני, ולהחזיר אותו לקול שלך',
+
+  meta: {
+    title: 'טביעת עט · זיהוי ושיפור ניסוח AI',
+  },
 
   nav: {
     analyze: 'ניתוח',
     history: 'היסטוריה',
     settings: 'הגדרות',
     about: 'איך זה עובד',
+    main: 'ניווט ראשי',
+    home: 'טביעת עט, לדף הבית',
+  },
+
+  shell: {
+    skipToContent: 'דילוג לתוכן הראשי',
+    accessLocal: 'כללים מקומיים בלבד',
+    accessKey: 'המפתח שלך · {provider}',
+    /** M3: shown when the signed-in user has an active subscription. */
+    accessPro: 'Pro',
+    accessChipLabel: 'מצב גישה: {status}. מעבר להגדרות הגישה',
+    footerNav: 'קישורים משפטיים ונגישות',
+    privacy: 'מדיניות פרטיות',
+    terms: 'תנאי שימוש',
+    accessibility: 'הצהרת נגישות',
+    cookieSettings: 'הגדרות עוגיות',
+    signIn: 'התחברות',
+    accountLabel: 'החשבון שלי: {name}',
+    accountChipPro: 'מנוי Pro פעיל. מעבר לחשבון',
+    rights: '© {year} טביעת עט',
+    /** Header language switch: shows the OTHER language, in that language. */
+    langSwitch: 'English',
+    langSwitchLabel: 'Switch language to English',
+  },
+
+  notFound: {
+    title: 'הדף לא נמצא',
+    body: 'ייתכן שהקישור שגוי או שהדף הוסר.',
+    backHome: 'חזרה לניתוח',
+  },
+
+  account: {
+    title: 'החשבון שלי',
+    signedOutTitle: 'התחברות',
+    whySignIn: 'צריך להתחבר רק כדי להירשם למנוי Pro או לנהל אותו. ניתוח עם מפתח משלכם או עם כללים מקומיים עובד בלי חשבון.',
+    whatWeKeep: 'אנחנו לא שומרים עליכם דבר בשרת. אחרי ההתחברות שמכם וכתובת האימייל שלכם נשמרים רק בעוגיית התחברות חתומה בדפדפן שלכם.',
+    google: 'התחברות עם Google',
+    googleCookieNote: 'ההתחברות שומרת עוגייה חיונית אחת (penprint_session) למשך 30 יום.',
+    notConfigured: 'ההתחברות עדיין לא הוגדרה בשרת הזה, ולכן היא לא זמינה כרגע.',
+    signedInAs: 'מחובר/ת בתור',
+    plan: 'תוכנית',
+    planPro: 'Pro',
+    planFree: 'חינם (מפתח משלכם או כללים מקומיים)',
+    status: 'סטטוס',
+    statuses: { active: 'פעיל', trialing: 'תקופת ניסיון', past_due: 'תשלום בפיגור', paused: 'מושהה', canceled: 'בוטל' } as Record<string, string>,
+    renewsOn: 'חידוש הבא',
+    cancelsOn: 'המנוי יסתיים ב-',
+    graceUntil: 'הגישה נשמרת עד',
+    pastDueNote: 'החיוב האחרון לא עבר. Paddle ינסה שוב; אפשר לעדכן אמצעי תשלום בניהול החיוב.',
+    manageBilling: 'ניהול חיוב',
+    manageBillingHint: 'נפתח אצל Paddle: אמצעי תשלום, חשבוניות וביטול.',
+    refresh: 'רענון סטטוס',
+    refreshing: 'בודקים…',
+    refreshed: 'הסטטוס עודכן',
+    signOut: 'התנתקות',
+    signedOut: 'התנתקת',
+    upgrade: 'שדרוג ל-Pro',
+    portalError: 'לא הצלחנו לפתוח את ניהול החיוב. נסו שוב בעוד רגע.',
+    checkoutPending: 'התשלום התקבל. בודקים את המנוי מול Paddle…',
+    checkoutDone: 'המנוי פעיל. אפשר לנתח בלי מפתח.',
+    checkoutSlow: 'המנוי עדיין לא מופיע. זה יכול לקחת דקה; לחצו "רענון סטטוס".',
+    errors: {
+      not_configured: 'ההתחברות לא הוגדרה בשרת הזה.',
+      cancelled: 'ההתחברות בוטלה.',
+      state: 'פג תוקף ההתחברות או שהיא נפתחה בלשונית אחרת. נסו שוב.',
+      google: 'Google לא אישרה את ההתחברות, או שכתובת האימייל לא מאומתת. נסו שוב.',
+    } as Record<string, string>,
+  },
+
+  pricing: {
+    title: 'מחירים',
+    intro: 'שתי דרכים להשתמש בטביעת עט. אפשר לעבור ביניהן בכל רגע.',
+    period: 'תקופת חיוב',
+    monthly: 'חודשי',
+    yearly: 'שנתי',
+    freeName: 'חינם · עם מפתח משלכם',
+    freePrice: '₪0',
+    freePriceNote: 'משלמים לספק ה-AI ישירות, לפי שימוש',
+    freeFeatures: [
+      'כל הספקים: OpenRouter,‏ OpenAI,‏ Anthropic,‏ Google ו-xAI',
+      'המפתח נשאר בדפדפן שלכם בלבד',
+      'משלמים לספק ישירות, בלי תיווך שלנו',
+      'בלי חשבון ובלי התחברות',
+    ],
+    freeCta: 'הוספת מפתח בהגדרות',
+    proName: 'Pro',
+    proPriceFallback: 'מנוי חודשי',
+    proFeatures: [
+      'בלי מפתח ובלי חשבון אצל ספק AI',
+      'אנחנו בוחרים בשבילכם את המודל המתאים ביותר',
+      'שימוש הוגן: עד {limit} קריאות למודל בשעה',
+      'ביטול בכל עת דרך Paddle',
+    ],
+    proRecommended: 'הכי פשוט',
+    ctaSignIn: 'התחברות עם Google ומעבר לתשלום',
+    ctaUpgrade: 'שדרוג ל-Pro',
+    ctaManage: 'ניהול המנוי',
+    ctaSoon: 'בקרוב',
+    soonNote: 'התשלום עדיין לא הופעל בשרת הזה.',
+    opening: 'פותחים את התשלום…',
+    checkoutError: 'לא הצלחנו לפתוח את דף התשלום. בדקו שחוסם פרסומות לא חוסם את cdn.paddle.com ונסו שוב.',
+    paddleNote: 'התשלום מתבצע אצל Paddle, שמשמשת כמשווקת (Merchant of Record): היא גובה את התשלום, מנפיקה חשבונית ומטפלת במע״מ.',
+    faqTitle: 'שאלות נפוצות',
+    faq: [
+      {
+        q: 'איפה נשמר המפתח שלי?',
+        a: 'רק בדפדפן שלכם. כברירת מחדל ללשונית הנוכחית בלבד (sessionStorage), ואם תבחרו "לזכור במכשיר הזה" ב-localStorage. המפתח נשלח לשרת שלנו רק בתוך בקשת ניתוח, מועבר לספק ונשכח: הוא לא נרשם ביומנים ולא נשמר.',
+      },
+      {
+        q: 'אילו נתונים אתם שומרים?',
+        a: 'אין לנו מסד נתונים. הטקסטים שאתם מנתחים נשלחים לספק ה-AI לצורך הניתוח ולא נשמרים אצלנו. ההיסטוריה וההגדרות נשמרות בדפדפן שלכם. אם התחברתם, השם והאימייל נמצאים רק בעוגייה חתומה בדפדפן. פרטי התשלום נמצאים אצל Paddle.',
+      },
+      {
+        q: 'איך מבטלים?',
+        a: 'בעמוד "החשבון שלי" לוחצים "ניהול חיוב" ומבטלים בפורטל של Paddle. המנוי נשאר פעיל עד סוף התקופה ששולמה, ולא מתחדש.',
+      },
+      {
+        q: 'אפשר לקבל החזר?',
+        a: 'כן, לפי מדיניות ההחזרים של Paddle ולפי חוק הגנת הצרכן, התשמ״א-1981, שמאפשר לבטל עסקת מכר מרחוק בתוך 14 יום. פנו אלינו או ל-Paddle דרך הקבלה שקיבלתם במייל.',
+      },
+      {
+        q: 'מע״מ וחשבונית',
+        a: 'Paddle היא המוכרת הרשמית (Merchant of Record). היא מחשבת וגובה מע״מ לפי המדינה שלכם ושולחת חשבונית לאימייל. אפשר להוסיף פרטי עסק לחשבונית בזמן התשלום או בפורטל.',
+      },
+    ],
+  },
+
+  onboarding: {
+    title: 'איך תרצו להתחיל?',
+    intro: 'בשביל ניתוח מלא, עם הסברים והצעות ניסוח, צריך מודל AI. אפשר גם לנסות קודם בלי.',
+    proTitle: 'מנוי Pro',
+    proBody: 'בלי מפתח. אנחנו בוחרים את המודל.',
+    keyTitle: 'יש לי מפתח API',
+    keyBody: 'OpenRouter,‏ OpenAI,‏ Anthropic,‏ Google או xAI.',
+    localTitle: 'לנסות עם כללים מקומיים',
+    localBody: 'בלי הרשמה. סימון דפוסים בלבד, בלי הסברים.',
+    dismissed: 'מנתחים עם כללים מקומיים. אפשר לחבר מודל בכל עת בהגדרות.',
+  },
+
+  consent: {
+    regionLabel: 'הודעה על עוגיות',
+    title: 'עוגיות ואחסון בדפדפן',
+    body: 'אנחנו משתמשים רק בעוגיות חיוניות: עוגיית התחברות (אם תתחברו), עוגייה שזוכרת את שפת הממשק ועוגייה שזוכרת את הבחירה הזו. ההגדרות, ההיסטוריה והמפתחות שבחרתם לשמור נשמרים באחסון המקומי של הדפדפן שלכם. אין כאן כלי ניתוח תנועה ואין פרסומות.',
+    accept: 'אישור',
+    essentialOnly: 'חיוניות בלבד',
+    details: 'פרטים',
+    saved: 'הבחירה נשמרה',
+    dialogTitle: 'הגדרות עוגיות',
+    dialogIntro: 'כך אנחנו משתמשים בעוגיות ובאחסון בדפדפן. אפשר לשנות את הבחירה בכל עת מהקישור "הגדרות עוגיות" בתחתית העמוד.',
+    essentialTitle: 'חיוניות',
+    essentialBody: 'התחברות (penprint_session), אבטחת ההתחברות עם Google למשך 10 דקות (penprint_oauth), שפת הממשק שבחרתם (penprint_lang) ושמירת הבחירה הזו (penprint_consent). בלעדיהן האתר לא יכול לעבוד, ולכן הן תמיד פעילות.',
+    alwaysOn: 'תמיד פעיל',
+    analyticsTitle: 'ניתוח שימוש',
+    analyticsBody: 'אין לנו כרגע כלים כאלה. אם נוסיף בעתיד, הם יופעלו רק אם תאשרו.',
+    notInUse: 'לא בשימוש',
+    current: 'הבחירה הנוכחית: {choice} ({date})',
+    currentAll: 'אישור הכול',
+    currentEssential: 'חיוניות בלבד',
+    save: 'שמירה',
+  },
+
+  legal: {
+    updated: 'עודכן לאחרונה: 9 בנובמבר 2026',
+    toc: 'תוכן העניינים',
+  },
+
+  ui: {
+    close: 'סגירה',
+    cancel: 'ביטול',
+    confirm: 'אישור',
+    dismiss: 'סגירת ההודעה',
+    notifications: 'הודעות',
   },
 
   input: {
@@ -36,8 +209,32 @@ export const he = {
     wordCount: '{count} מילים',
     sentenceCount: '{count} משפטים',
     analyzeButton: 'לנתח את הטקסט',
+    pageTitle: 'ניתוח טקסט · טביעת עט: זיהוי ושיפור ניסוח AI',
     clearButton: 'ניקוי',
     sampleButton: 'לנסות עם טקסט לדוגמה',
+    stepsTitle: 'איך זה עובד',
+    step1: 'מדביקים טקסט או מעלים קובץ',
+    step2: 'לוחצים "לנתח את הטקסט"',
+    step3: 'עוברים על המשפטים המסומנים ומשפרים את הניסוח',
+    titleLabel: 'כותרת',
+    titleHint: 'לא חובה. עוזרת למצוא את הניתוח בהיסטוריה.',
+    textLabel: 'הטקסט לניתוח',
+    textHint: 'לפחות {min} מילים. אפשר עד {max} מילים בניתוח אחד.',
+    dropTitle: 'גררו קובץ לכאן',
+    dropOr: 'או',
+    dropRelease: 'שחררו כאן את הקובץ',
+    needMoreWords: 'חסרות עוד {count} מילים כדי לנתח',
+    localOnlyNotice: 'עדיין לא חיברת ספק מודל, אז הניתוח יתבסס על כללים מקומיים בלבד (בלי הסברים והצעות ניסוח).',
+    localOnlyLink: 'לחיבור ספק בהגדרות',
+    docxKept: 'קובץ Word: {name}. התוצאות יוצגו על המסמך המעוצב עצמו, ואפשר יהיה להוריד אותו אחרי עריכה.',
+    docxChanged: 'שינית את הטקסט, ולכן הניתוח יוצג כטקסט רגיל ולא בתצוגת Word.',
+    fileLoaded: 'הקובץ נטען: {name}',
+    untitled: 'ללא כותרת',
+    sampleText: `בעולם המשתנה של ימינו, הבינה המלאכותית ממלאת תפקיד מרכזי בעיצוב פני החינוך. חשוב לציין כי השימוש בכלים אלו מהווה לא רק הזדמנות, אלא גם אתגר משמעותי עבור מורים, תלמידים ומקבלי החלטות. יתרה מכך, מחקרים רבים מראים כי שילוב טכנולוגיה בכיתה מעשיר את חוויית הלמידה, מעודד חשיבה ביקורתית ומטפח יצירתיות.
+
+בסמינר של פרופ' לוי ראיינתי שבעה מורים מבתי ספר בדרום. ארבעה מהם אמרו שהם כבר לא מבקשים עבודות בית כתובות. אחת המורות סיפרה שהיא חזרה למבחנים בכתב יד, "כמו בשנות התשעים". לא ציפיתי לזה.
+
+לסיכום, ניתן לומר כי הבינה המלאכותית היא חרב פיפיות: מחד גיסא היא פותחת אופקים חדשים, ומאידך גיסא היא מציבה דילמות אתיות מורכבות. רק באמצעות גישה הוליסטית ומאוזנת נוכל לממש את הפוטנציאל הגלום בה ולהבטיח עתיד טוב יותר לכולנו.`,
   },
 
   progress: {
@@ -49,6 +246,7 @@ export const he = {
     rewriting: 'מנסח הצעה חלופית…',
     cancel: 'ביטול',
     cancelled: 'הניתוח בוטל',
+    done: 'הניתוח הסתיים',
   },
 
   results: {
@@ -82,6 +280,75 @@ export const he = {
     rewriteParagraph: 'הצעה לניסוח מחדש של הפסקה',
     exportReport: 'ייצוא דוח',
     newAnalysis: 'ניתוח חדש',
+    reanalyze: 'ניתוח מחדש',
+    legendTitle: 'מקרא הסימונים',
+    sentenceNav: 'מעבר בין משפטים חשודים',
+    prevSuspicious: 'החשוד הקודם',
+    nextSuspicious: 'החשוד הבא',
+    position: '{index} מתוך {total}',
+    noneSelected: '{total} משפטים חשודים',
+    announceSentence: 'משפט {index} מתוך {total}, {percent}%, {band}',
+    /** Screen-reader suffix inside a highlighted sentence (its text stays the accessible name). */
+    sentenceSuffix: ' (משפט חשוד, {band})',
+    sentenceSuffixPercent: ' (משפט חשוד, {band}, {percent}%)',
+    sentenceLabelDocx: '{text} (משפט חשוד, {band}, {percent}%)',
+    edited: 'נערך',
+    sheetExpand: 'הגדלת חלונית פרטי המשפט',
+    pageTitle: 'תוצאות: {title} · טביעת עט',
+    summaryTitle: 'סיכום וסינון',
+    openSummary: 'סיכום וסינון',
+    document: 'המסמך המנותח',
+    downloadWord: 'הורדת Word',
+    preparing: 'מכין…',
+    wordView: 'תצוגת Word',
+    textView: 'תצוגת טקסט',
+    bands: { 0: 'מתחת לסף', 1: 'אפשרי', 2: 'סביר', 3: 'סביר מאוד' },
+    confidence: { low: 'ביטחון נמוך', medium: 'ביטחון בינוני', high: 'ביטחון גבוה' },
+    /** Sample letters shown in the legend's highlight swatches. */
+    legendSample: 'אבג',
+    localOnly: 'ניתוח מקומי בלבד',
+    coverage: ' · נותחו {percent}%',
+    running: 'מנתח…',
+    filteredBy: 'מסונן לפי:',
+    clearPatternFilter: 'ביטול הסינון לפי דפוס',
+    chunksFailed: '({count} מקטעים נכשלו, מוצג ציון מקומי עבורם.)',
+    providerDetails: 'פרטים מהספק',
+    /** Suffix for the downloaded, edited Word file: "<name> (טביעת עט).docx". */
+    downloadSuffix: 'טביעת עט',
+  },
+
+  score: {
+    label: 'סבירות לכתיבה בסגנון AI',
+    coverageOfText: ' · נותחו {percent}% מהטקסט',
+    provisional: ' · זמני',
+    localPending: 'מודל השפה עדיין קורא את הטקסט. עד שיחזרו תוצאות, המספר מבוסס רק על ביטויים מוכרים ואינו הערכה של הטקסט כולו.',
+    localNote: 'המספר מבוסס רק על מדדי סגנון ועל ביטויים מוכרים (נמצאו ב-{count} משפטים), בלי מודל שפה. זו אינדיקציה בלבד: טקסט AI "נקי" וקצר עלול לקבל כאן ציון נמוך. לניתוח מלא צריך לחבר ספק מודל בהגדרות.',
+    flaggedShare: '{share}% מהטקסט שנבדק נמצא במשפטים עם סבירות {high}% ומעלה.',
+    willUpdate: ' הציון יתעדכן כשהניתוח יסתיים.',
+    composition: 'ממה מורכב הציון',
+    documentJudgment: 'שיפוט המסמך כולו',
+    checking: 'בודק…',
+    failed: 'נכשל',
+    styleIndex: 'מדד סגנון',
+    shortText: 'טקסט קצר, משקל נמוך',
+    decisionModel: 'מודל החלטה',
+    evidence: 'ראיות',
+    aiEvidence: 'מצביע על AI',
+    humanEvidence: 'מצביע על כתיבה אנושית',
+    dirty: 'בוצעו שינויים. כדאי להריץ ניתוח מחדש.',
+    whatTitle: 'מה המספר אומר?',
+    whatBody:
+      'זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. כתיבת AI מודרנית ניכרת בעיקר ברמת המסמך: משפטים ארוכים ומאוזנים באופן אחיד, רשימות של שלושה שחוזרות, מחברים חלקים, היעדר הפניות ופרטים אישיים. לכן הציון נשען קודם כול על שיפוט המסמך כולו בידי מודל השפה ועל מדד סגנון שמחושב מקומית, ורק אחר כך על ממוצע המשפטים ועל מודל ההחלטה. גם ציוני המשפטים מושפעים מהשיפוט הכולל, כי משפט נקרא כחלק מהמסמך שלו.',
+    topPatterns: 'דפוסים בולטים',
+  },
+
+  docx: {
+    viewBefore: 'תצוגת ',
+    viewAfter: ':',
+    pages: 'עמודים',
+    flow: 'רציף',
+    loading: 'טוען את המסמך…',
+    error: 'לא הצלחנו להציג את קובץ ה-Word. אפשר לעבור לתצוגת טקסט.',
   },
 
   categories: {
@@ -115,10 +382,28 @@ export const he = {
     next: 'המשפט הבא',
     close: 'סגירה',
     rewriteNote: 'ההצעה שומרת על המשמעות, המספרים וההפניות. כדאי לקרוא אותה ולהתאים לקול שלך.',
+    copiedToast: 'ההצעה הועתקה ללוח',
+    copyFailed: 'לא הצלחנו להעתיק. אפשר לסמן את הטקסט ולהעתיק ידנית.',
+    appliedToast: 'הניסוח הוחל על המשפט. כדאי להריץ ניתוח מחדש.',
+    manualEdit: 'עריכה ידנית',
+    manualEditLabel: 'הטקסט החדש של המשפט',
+    save: 'שמירה',
+    unignore: 'ביטול הסימון כתקין',
+    ignoredToast: 'המשפט סומן כתקין',
+    unignoredToast: 'הסימון כתקין בוטל',
+    signalLlm: 'מודל שפה',
+    signalDecision: 'מודל החלטה',
+    signalLocal: 'כללים מקומיים',
+    pending: 'ממתין לניתוח המודל…',
+    failed: 'ניתוח המודל נכשל, מוצג ציון מקומי',
+    howToFix: 'איך לתקן: ',
+    rewriteNeedsProvider: 'הצעות ניסוח זמינות אחרי חיבור ספק מודל.',
+    position: 'משפט {index} מתוך {total}',
   },
 
   filters: {
     title: 'סינון',
+    occurrences: '{count} מופעים',
     all: 'הכול',
     flaggedOnly: 'רק משפטים מסומנים',
     byCategory: 'לפי קטגוריה',
@@ -142,6 +427,7 @@ export const he = {
     lexicalDiversityHint: 'היחס בין מספר המילים השונות לסך המילים. ערך נמוך מעיד על חזרתיות.',
     avgSentenceLength: 'אורך משפט ממוצע',
     avgSentenceLengthUnit: '{value} מילים',
+    sentences: '{count} משפטים',
     low: 'נמוך',
     medium: 'בינוני',
     high: 'גבוה',
@@ -156,6 +442,14 @@ export const he = {
       google: 'Google AI Studio',
       openai: 'OpenAI',
       anthropic: 'Anthropic',
+      xai: 'xAI (Grok)',
+    },
+    providerNotes: {
+      openrouter: 'מפתח אחד לכל המודלים, כולל מודלי החלטה כמו Jev',
+      openai: 'מודלי GPT ישירות מ-OpenAI',
+      anthropic: 'מודלי Claude ישירות מ-Anthropic',
+      google: 'מודלי Gemini, כולל מכסה חינמית',
+      xai: 'מודלי Grok ישירות מ-xAI',
     },
     apiKey: 'מפתח API',
     apiKeyPlaceholder: 'הדביקו כאן את המפתח',
@@ -176,6 +470,82 @@ export const he = {
     testing: 'בודק…',
     testSuccess: 'החיבור תקין',
     testFailed: 'החיבור נכשל: {reason}',
+    sectionsNav: 'חלקי ההגדרות',
+    accessSection: 'גישה',
+    accessIntro: 'איך תרצו להתחבר? מנוי, מפתח API משלכם, או כללים מקומיים בלבד.',
+    proTitle: 'מנוי Pro',
+    proActiveBadge: 'פעיל',
+    proActive: 'המנוי פעיל — אין צורך במפתח.',
+    proActiveKeyNote: 'הגדרת גם מפתח משלך, ולכן הניתוח ירוץ עליו. כדי להשתמש במנוי, מחקו את המפתח של הספק שנבחר.',
+    proManage: 'לניהול החשבון',
+    proBody: 'בלי מפתח ובלי חשבון אצל ספק: אנחנו בוחרים את המודל המתאים, ואפשר לבטל בכל עת.',
+    proLink: 'למחירים ולפרטים',
+    byokTitle: 'מפתח API משלכם (חינם)',
+    byokIntro: 'בחרו ספק, הדביקו את המפתח ובדקו את החיבור. על השימוש משלמים ישירות לספק.',
+    chooseProvider: 'ספק',
+    getKey: 'איך משיגים מפתח?',
+    newTab: '(נפתח בחלון חדש)',
+    rememberKey: 'לזכור במכשיר הזה',
+    rememberHint: 'בלי הסימון המפתחות נמחקים כשסוגרים את הלשונית. עם הסימון הם נשמרים בדפדפן הזה עד שתמחקו אותם. כדאי לסמן רק במכשיר אישי.',
+    rememberOn: 'המפתחות יישמרו במכשיר הזה.',
+    rememberOff: 'המפתחות יישמרו רק עד סגירת הלשונית.',
+    keyInSession: 'המפתח שמור עד סגירת הלשונית.',
+    keyOnDevice: 'המפתח שמור במכשיר הזה.',
+    privacyTitle: 'פרטיות המפתח',
+    privacyNote: 'המפתח נשמר רק בדפדפן שלך ונשלח ישירות לבקשה אחת. אנחנו לא שומרים אותו בשום מקום.',
+    privacyMore: 'השרת שלנו מעביר את המפתח לספק בכל בקשה ושוכח אותו מיד: הוא לא נרשם ביומנים, לא נשמר במטמון ולא נכתב לקובץ או למסד נתונים.',
+    forgetAll: 'מחק את כל המפתחות',
+    forgetTitle: 'מחיקת כל המפתחות',
+    forgetBody: 'כל מפתחות ה-API יימחקו מהדפדפן הזה, גם מהלשונית וגם מהמכשיר. אפשר להדביק אותם שוב בכל עת.',
+    forgetDone: 'כל המפתחות נמחקו.',
+    noKeyToTest: 'כדי לבדוק חיבור צריך קודם להדביק מפתח.',
+    testFailedDetails: 'פרטים מהספק',
+    modelDefaultMark: '{model} (ברירת מחדל)',
+    modelSuggested: 'מודלים מומלצים',
+    modelAllOpenRouter: 'כל המודלים ב-OpenRouter',
+    modelCustom: 'מודל אחר (הקלדה חופשית)…',
+    modelCustomLabel: 'מזהה המודל',
+    modelCustomHint: 'המזהה כפי שהוא מופיע אצל הספק, למשל {example}.',
+    chatgptButton: 'התחברות עם ChatGPT (בקרוב)',
+    chatgptNote: 'OpenAI מאפשרת כרגע התחברות עם חשבון ChatGPT רק לשותפים נבחרים. כשהאפשרות תיפתח, נוסיף אותה כאן. בינתיים צריך מפתח API.',
+    chatgptNotImplemented: 'ההתחברות עם ChatGPT עדיין לא זמינה.',
+    localTitle: 'בלי מפתח: כללים מקומיים בלבד',
+    localBody: 'אפשר להשתמש בטביעת עט גם בלי שום חיבור. הניתוח נעשה בדפדפן בעזרת כללים לשוניים קבועים: הם מסמנים ביטויים ודפוסי סגנון אופייניים, אבל לא נותנים הערכת סבירות מלאה ולא הצעות ניסוח.',
+    analysisSection: 'ניתוח',
+    analysisIntro: 'כמה רגיש הסימון ובאיזו שפה יוצגו ההסברים.',
+    displaySection: 'תצוגה',
+    displayIntro: 'שפה, ערכת צבעים, גודל טקסט ואחוזים ליד המשפטים.',
+    theme: 'ערכת צבעים',
+    themeSystem: 'לפי המכשיר',
+    themeLight: 'בהירה',
+    themeDark: 'כהה',
+    textSize: 'גודל טקסט',
+    textSizeNormal: 'רגיל',
+    textSizeLarge: 'גדול',
+    textSizeLarger: 'גדול מאוד',
+    textSizeHint: 'מגדיל את כל הטקסט באתר, כולל המסמך המנותח.',
+    alwaysShowPercent: 'להציג אחוז גם ליד משפטים ברמת "אפשרי"',
+    alwaysShowPercentHint: 'כברירת מחדל האחוז מוצג רק ליד משפטים ברמת "סביר" ומעלה.',
+    connected: 'יש מפתח',
+    whereKey: 'איפה מקבלים מפתח?',
+    keyStorageNote: 'המפתח עובר דרך שרת האתר לספק בכל בקשה, בלי שיישמר שם.',
+    defaultModel: 'ברירת מחדל',
+    modelSuggestions: 'מודלים מוצעים',
+    decisionTitle: 'מודל החלטה (אופציונלי)',
+    decisionIntro: 'מודלי החלטה, כמו Jev של TypeSafe, לא מייצרים טקסט. הם מחזירים הסתברות מכוילת לשאלת כן/לא לכל משפט. הציון שלהם משוקלל יחד עם מודל השפה והכללים המקומיים. נדרש מפתח OpenRouter.',
+    useDecision: 'להשתמש במודל החלטה',
+    decisionKey: 'מפתח OpenRouter (למודל ההחלטה)',
+    decisionNoKey: 'בלי מפתח OpenRouter מודל ההחלטה לא יופעל.',
+    chatPlanQ: 'מה לגבי מנוי ChatGPT Plus או Claude Pro?',
+    chatPlanA: 'מנויי צ׳אט אינם כוללים גישה ל-API, ואתר חיצוני לא יכול להשתמש בהם. צריך מפתח API נפרד (OpenAI Platform או Anthropic Console), או מפתח OpenRouter שנותן גישה גם ל-GPT וגם ל-Claude דרך חשבון אחד.',
+    autosaved: 'ההגדרות נשמרות אוטומטית בדפדפן הזה.',
+    langHe: 'עברית',
+    langEn: 'English',
+    langAuto: 'כשפת הטקסט',
+    langUi: 'כמו שפת הממשק',
+    explanationLanguageHint: 'הצעות הניסוח תמיד נשארות בשפה של המשפט עצמו.',
+    uiLanguage: 'שפת הממשק',
+    uiLanguageHint: 'ההחלפה חלה על כל האתר ונשמרת בעוגייה penprint_lang.',
   },
 
   history: {
@@ -187,6 +557,20 @@ export const he = {
     clearAll: 'מחיקת כל ההיסטוריה',
     clearAllConfirm: 'כל הניתוחים השמורים יימחקו מהדפדפן הזה. להמשיך?',
     storedLocally: 'ההיסטוריה נשמרת רק במכשיר הזה.',
+    search: 'חיפוש בהיסטוריה',
+    searchHint: 'מחפש בכותרות ובטקסט של הניתוחים.',
+    resultsCount: '{count} ניתוחים',
+    resultsOne: 'ניתוח אחד',
+    noMatches: 'לא נמצאו ניתוחים שמתאימים ל"{q}".',
+    deleteTitle: 'מחיקת ניתוח',
+    clearAllTitle: 'מחיקת כל ההיסטוריה',
+    deleted: 'הניתוח "{title}" נמחק',
+    cleared: 'ההיסטוריה נמחקה',
+    words: '{count} מילים',
+    local: 'מקומי',
+    startFirst: 'לניתוח הראשון',
+    deleteItem: 'מחיקת "{title}"',
+    pageTitle: 'היסטוריית ניתוחים',
   },
 
   empty: {
@@ -217,4 +601,14 @@ export const he = {
   },
 } as const;
 
-export type HeStrings = typeof he;
+/** Deep-widens the literal types of `he` so another language can supply different strings. */
+type Widen<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly Widen<U>[]
+    : T extends object
+      ? { readonly [K in keyof T]: Widen<T[K]> }
+      : T;
+
+/** The dictionary type every UI language must satisfy (derived from the Hebrew source). */
+export type Dict = Widen<typeof he>;

@@ -1,12 +1,14 @@
 {
-  "name": "app",
+  "name": "penprint",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:m3": "node --conditions=react-server --experimental-strip-types --no-warnings scripts/check-m3.ts",
+    "a11y": "node scripts/a11y.mjs"
   },
   "dependencies": {
     "docx-preview": "^0.4.1",
@@ -19,6 +21,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -27,6 +30,7 @@
     "docx": "^9.15.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

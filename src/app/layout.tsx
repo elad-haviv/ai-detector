@@ -1,12 +1,18 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/AppShell';
-import { he } from '@/lib/i18n/he';
+import { dirOf } from '@/lib/i18n';
+import { LocaleProvider } from '@/lib/i18n/client';
+import { getLocale, getT } from '@/lib/i18n/server';
 
-export const metadata: Metadata = {
-  title: `${he.appName} · זיהוי ושיפור ניסוח AI`,
-  description: he.tagline,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return {
+    title: t.meta.title,
+    description: t.tagline,
+    applicationName: t.appName,
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,12 +23,16 @@ export const viewport: Viewport = {
   ],
 };
 
-// Apply the saved theme before paint to avoid a light flash in dark mode.
-const themeScript = `try{var s=JSON.parse(localStorage.getItem('kulmus:settings:v1')||'{}');var t=s.theme||'system';if(t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
+// Apply the saved theme and text size before paint to avoid a flash. The settings may still sit
+// under the app's former storage key until storageMigration.ts runs, so fall back to it.
+const themeScript = `try{var s=JSON.parse(localStorage.getItem('penprint:settings:v1')||localStorage.getItem('kulmus:settings:v1')||'{}');var t=s.theme||'system';var r=document.documentElement;if(t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))r.classList.add('dark');if(s.textSize==='large'||s.textSize==='larger')r.classList.add('text-size-'+s.textSize)}catch(e){}`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Language comes from the penprint_lang cookie (else Accept-Language), so the first paint is
+  // already in the right language and direction.
+  const locale = await getLocale();
   return (
-    <html lang="he" dir="rtl" suppressHydrationWarning>
+    <html lang={locale} dir={dirOf(locale)} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -33,7 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <AppShell>{children}</AppShell>
+        <LocaleProvider locale={locale}>
+          <AppShell>{children}</AppShell>
+        </LocaleProvider>
       </body>
     </html>
   );

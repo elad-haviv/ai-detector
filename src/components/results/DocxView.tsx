@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getFile } from '@/lib/blobStore';
 import { annotateRendered, buildEditedDocx } from '@/lib/docx/model';
 import type { Sentence } from '@/lib/types';
+import { useLangAttr, useT } from '@/lib/i18n/client';
 
 export interface Decor {
   cls: string;
@@ -30,6 +31,8 @@ export function DocxView({
   onSelect: (id: number) => void;
   onUnavailable: () => void;
 }) {
+  const t = useT();
+  const langAttr = useLangAttr();
   const hostRef = useRef<HTMLDivElement>(null);
   const styleRef = useRef<HTMLDivElement>(null);
   const spansRef = useRef<Map<number, HTMLElement[]>>(new Map());
@@ -107,15 +110,20 @@ export function DocxView({
     const host = hostRef.current;
     if (!host || state !== 'ready') return;
     host.querySelectorAll('.badge[data-k]').forEach((b) => b.remove());
+    // One roving tab stop: the selected sentence, else the first highlighted one, else the first.
+    const ids = [...spansRef.current.keys()];
+    const tabStop = selected !== null && spansRef.current.has(selected) ? selected : (ids.find((id) => decor(id).label) ?? ids[0]);
     for (const [id, spans] of spansRef.current) {
       const d = decor(id);
       spans.forEach((sp, i) => {
         sp.className = `sent ${d.cls}`;
         if (i === 0) {
+          // A sentence can span several formatted runs; only the first is the button, so its name
+          // is the whole sentence text (plus the band for highlighted ones).
+          const text = sentencesRef.current.find((s) => s.id === id)?.text || sp.textContent || '';
           sp.setAttribute('role', 'button');
-          sp.tabIndex = selected === id ? 0 : -1;
-          if (d.label) sp.setAttribute('aria-label', d.label);
-          else sp.removeAttribute('aria-label');
+          sp.tabIndex = tabStop === id ? 0 : -1;
+          sp.setAttribute('aria-label', d.label ? d.label.replace('{text}', text) : text);
         }
         if (selected === id) sp.setAttribute('aria-current', 'true');
         else sp.removeAttribute('aria-current');
@@ -133,21 +141,25 @@ export function DocxView({
 
   return (
     <div>
-      <div className="mb-2 flex items-center gap-2 text-[13px]">
-        <span className="text-muted">תצוגת Word:</span>
+      <div className="mb-2 flex items-center gap-2 text-caption">
+        <span className="text-muted">
+          {t.docx.viewBefore}
+          <span lang={langAttr('en')}>Word</span>
+          {t.docx.viewAfter}
+        </span>
         {(['page', 'flow'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             aria-pressed={mode === m}
-            className={`rounded-full border px-3 py-1 font-semibold ${mode === m ? 'border-accent bg-accent/10' : 'border-border text-muted'}`}
+            className={`min-h-9 rounded-full border px-3 font-semibold ${mode === m ? 'border-accent bg-accent/10' : 'border-border-strong text-muted'}`}
           >
-            {m === 'page' ? 'עמודים' : 'רציף'}
+            {m === 'page' ? t.docx.pages : t.docx.flow}
           </button>
         ))}
-        {state === 'loading' && <span className="ms-auto text-muted">טוען את המסמך…</span>}
+        {state === 'loading' && <span className="ms-auto text-muted">{t.docx.loading}</span>}
       </div>
-      {state === 'error' && <p className="card p-4 text-danger">לא הצלחנו להציג את קובץ ה-Word. אפשר לעבור לתצוגת טקסט.</p>}
+      {state === 'error' && <p className="card p-4 text-danger">{t.docx.error}</p>}
       <div ref={styleRef} />
       <div
         ref={hostRef}
@@ -158,7 +170,10 @@ export function DocxView({
         }}
         onKeyDown={(e) => {
           const el = (e.target as HTMLElement).closest('[data-s]') as HTMLElement | null;
-          if (el && e.key === 'Enter') onSelect(Number(el.dataset.s));
+          if (el && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onSelect(Number(el.dataset.s));
+          }
         }}
       />
     </div>

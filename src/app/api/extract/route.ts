@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { json } from '@/lib/server/http';
 
 export const runtime = 'nodejs';
 
@@ -6,10 +6,15 @@ const MAX_BYTES = 15 * 1024 * 1024;
 
 /** Extract plain text (paragraphs separated by blank lines) from .docx / .pdf / .txt / .md uploads. */
 export async function POST(req: Request) {
-  const form = await req.formData();
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return json({ error: 'invalid_file' }, { status: 400 });
+  }
   const file = form.get('file');
-  if (!(file instanceof File)) return NextResponse.json({ error: 'invalid_file' }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: 'too_large' }, { status: 413 });
+  if (!(file instanceof File)) return json({ error: 'invalid_file' }, { status: 400 });
+  if (file.size > MAX_BYTES) return json({ error: 'too_large' }, { status: 413 });
   const name = file.name.toLowerCase();
   const buf = Buffer.from(await file.arrayBuffer());
 
@@ -56,12 +61,12 @@ export async function POST(req: Request) {
         .map((p) => p.replace(/-\n(?=\p{L})/gu, '').replace(/\s*\n\s*/g, ' ').trim())
         .filter(Boolean)
         .join('\n\n');
-      if (text.replace(/\s/g, '').length < 20) return NextResponse.json({ error: 'scanned_pdf' }, { status: 422 });
+      if (text.replace(/\s/g, '').length < 20) return json({ error: 'scanned_pdf' }, { status: 422 });
     } else {
-      return NextResponse.json({ error: 'invalid_file' }, { status: 415 });
+      return json({ error: 'invalid_file' }, { status: 415 });
     }
-    return NextResponse.json({ text: text.trim(), title: file.name.replace(/\.[^.]+$/, '') });
+    return json({ text: text.trim(), title: file.name.replace(/\.[^.]+$/, '') });
   } catch (e) {
-    return NextResponse.json({ error: 'invalid_file', message: e instanceof Error ? e.message : String(e) }, { status: 422 });
+    return json({ error: 'invalid_file', message: e instanceof Error ? e.message : String(e) }, { status: 422 });
   }
 }

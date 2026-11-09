@@ -1,5 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { getAccount, type AccountState } from './account';
+import { getKeys, migrateLegacyKeys, type ApiKeys } from './keyStore';
+import { migrateLegacyStorage } from './storageMigration';
 import type { Analysis, ProviderId, Settings } from './types';
 
 export const DEFAULT_MODELS: Record<ProviderId, string> = {
@@ -7,29 +10,31 @@ export const DEFAULT_MODELS: Record<ProviderId, string> = {
   google: 'gemini-3.8-flash',
   openai: 'gpt-6.1-terra',
   anthropic: 'claude-sonnet-5-5',
+  xai: 'grok-4.3',
 };
 
 export const MODEL_SUGGESTIONS: Record<ProviderId, string[]> = {
-  openrouter: ['anthropic/claude-sonnet-5.5', 'anthropic/claude-haiku-5.5', 'google/gemini-3.8-flash', 'openai/gpt-6.1-terra', 'openai/gpt-6-luna'],
+  openrouter: ['anthropic/claude-sonnet-5.5', 'anthropic/claude-haiku-5.5', 'google/gemini-3.8-flash', 'openai/gpt-6.1-terra', 'openai/gpt-6-luna', 'x-ai/grok-4.3'],
   google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.1-flash-lite'],
   openai: ['gpt-6.1-terra', 'gpt-6.1-sol', 'gpt-6-luna'],
   anthropic: ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'],
+  xai: ['grok-4.3', 'grok-4.20', 'grok-4.7'],
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: 'openrouter',
-  keys: {},
   models: { ...DEFAULT_MODELS },
   useDecisionModel: true,
   decisionModel: 'typesafe/jev-1.14',
   sensitivity: 'medium',
-  explanationLanguage: 'he',
+  explanationLanguage: 'ui',
   theme: 'system',
+  textSize: 'normal',
   alwaysShowPercent: false,
 };
 
-const SETTINGS_KEY = 'kulmus:settings:v1';
-const HISTORY_KEY = 'kulmus:history:v1';
+export const SETTINGS_KEY = 'penprint:settings:v1';
+const HISTORY_KEY = 'penprint:history:v1';
 const MAX_HISTORY = 40;
 
 function safeGet<T>(key: string, fallback: T): T {
@@ -51,8 +56,13 @@ const listeners = new Set<() => void>();
 let cache: Settings | null = null;
 function readSettings(): Settings {
   if (!cache) {
-    const s = safeGet<Partial<Settings>>(SETTINGS_KEY, {});
-    cache = { ...DEFAULT_SETTINGS, ...s, models: { ...DEFAULT_MODELS, ...(s.models || {}) }, keys: { ...(s.keys || {}) } };
+    // former app name: move kulmus:* storage to penprint:* first (see storageMigration.ts)
+    migrateLegacyStorage();
+    // keys used to live in this record: move them to the key store before reading
+    migrateLegacyKeys();
+    const { keys: _legacy, ...s } = safeGet<Partial<Settings> & { keys?: unknown }>(SETTINGS_KEY, {});
+    void _legacy;
+    cache = { ...DEFAULT_SETTINGS, ...s, models: { ...DEFAULT_MODELS, ...(s.models || {}) } };
   }
   return cache;
 }
@@ -78,8 +88,20 @@ export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
   return [s, update];
 }
 
-export function hasKey(s: Settings): boolean {
-  return Boolean(s.keys[s.provider]?.trim());
+/** True when the chosen provider has a key in the key store (pass `keys` from `useKeys()` in components). */
+export function hasKey(s: Settings, keys: ApiKeys = getKeys()): boolean {
+  return Boolean(keys[s.provider]?.trim());
+}
+
+/**
+ * How model calls run right now: the user's own key wins ('byok'); else a Pro subscriber runs on the
+ * server's keys ('managed', requests carry no key); else null = local rules only.
+ */
+export type LlmMode = 'byok' | 'managed' | null;
+export function llmMode(s: Settings, keys: ApiKeys = getKeys(), account: Pick<AccountState, 'plan'> = getAccount()): LlmMode {
+  if (hasKey(s, keys)) return 'byok';
+  if (account.plan === 'pro') return 'managed';
+  return null;
 }
 
 // --- theme ---
@@ -94,8 +116,18 @@ export function useApplyTheme(theme: Settings['theme']) {
   }, [theme]);
 }
 
+// --- text size ---
+export function useApplyTextSize(size: Settings['textSize']) {
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('text-size-large', size === 'large');
+    root.classList.toggle('text-size-larger', size === 'larger');
+  }, [size]);
+}
+
 // --- history ---
 export function loadHistory(): Analysis[] {
+  migrateLegacyStorage();
   return safeGet<Analysis[]>(HISTORY_KEY, []);
 }
 export function saveToHistory(a: Analysis) {

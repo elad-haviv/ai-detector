@@ -2,20 +2,25 @@
 
 Tone: calm, scholarly, trustworthy. It should feel like a careful reader's margin notes, not a security scanner. Use paper-like surfaces, ink-blue accents and warm highlights. No neon, no glow, no red alarm states for normal findings.
 
-UI language: Hebrew, `<html lang="he" dir="rtl">`. Analyzed text: every paragraph/sentence container gets `dir="auto"`. Use logical CSS properties throughout (`ps-*`, `me-*`, `start-*`, `border-s`), never left/right.
+Product name: **Penprint** in English, **טביעת עט** in Hebrew (M5; formerly "Kulmus").
+
+UI language: Hebrew (`<html lang="he" dir="rtl">`) or English (`<html lang="en" dir="ltr">`), see §14. Analyzed text: every paragraph/sentence container gets `dir="auto"`. Use logical CSS properties throughout (`ps-*`, `me-*`, `start-*`, `border-s`), never left/right. Tables and descriptions below speak of the RTL layout; LTR mirrors it.
 
 ---
 
 ## 1. Information Architecture
 
 ```
-/            ניתוח (Analyze): input → progress → results/editor (one workspace)
-/history     היסטוריה: list of past analyses (localStorage/IndexedDB)
-/settings    הגדרות: provider, API key, model, sensitivity, explanation language
-(later) /account, /pricing
+/              ניתוח (Analyze): input → progress → results/editor (one workspace)
+/history       היסטוריה: past analyses (localStorage + IndexedDB for .docx files)
+/settings      הגדרות: sections גישה (#access) · ניתוח (#analysis) · תצוגה (#display)
+/pricing       Free (BYOK) vs Pro cards, monthly/yearly toggle, Paddle overlay checkout, FAQ
+/account       Google sign-in / plan status, renew date, manage billing (Paddle portal), refresh, sign out
+/privacy /terms   Hebrew legal pages (LegalPage, anchored sections, cookie table; stacked cards <640px)
+/accessibility  Accessibility statement (הצהרת נגישות, LegalPage + `accessibilityDoc` in legal.he.ts)
 ```
 
-Top bar (desktop) or bottom tab bar (mobile) has three entries: ניתוח · היסטוריה · הגדרות. The workspace has three states: **Empty/Input → Analyzing → Results (editable)**.
+**AppShell** (`src/components/AppShell.tsx`): skip link "דילוג לתוכן הראשי" → `<main id="main">`; `<header>` with logo, desktop `<nav aria-label="ניווט ראשי">` (`aria-current="page"` on the active link), and the **header status slot** (`data-slot="header-status"`): the access chip (`AccessChip`: "המפתח שלך · <provider>" when the chosen provider has a key in the browser key store, "Pro" for a subscriber, else "כללים מקומיים בלבד"; links to `/settings#access`) and the account button (`AccountButton`: avatar initial → /account, or "התחברות"). The chip follows `llmMode()`: BYOK key wins, then Pro, then local. `<footer>` with privacy · terms · accessibility statement links and a "הגדרות עוגיות" button that dispatches `penprint:open-cookie-settings` (`CookieConsent` calls `preventDefault()` and opens its Dialog; the first-visit banner is a non-modal bottom `role=region` above the mobile tab bar, and the page gets matching bottom padding). Mobile (<768px): bottom tab bar with the same three entries; the footer pads for it. The workspace has three states: **Input → Analyzing → Results (editable)**.
 
 ## 2. Layouts
 
@@ -53,7 +58,7 @@ Use a single-hue sequential **amber → burnt-sienna** scale. Luminance carries 
 - Text on every background ≥ 4.5:1 (verify in both themes). Highlights tint the background only and never change text colour.
 - Selected sentence: 2px `--focus` outline ring with 2px offset + `aria-current="true"`.
 - Rewritten (applied) sentence: green-free marker. Use a thin `--accent` start-border + "✎ נערך" chip until re-analysis.
-- Each sentence span: `role="button" tabindex="-1" aria-label="משפט חשוד, 73%, סביר"`.
+- Each sentence span: `role="button"`, roving `tabindex`; its accessible name is its own text plus a visually hidden suffix "(משפט חשוד, סביר, 73%)" (no `aria-label`, so the visible text stays in the name, WCAG 2.5.3). In the Word view a sentence can span several runs, so the first run gets `aria-label` = whole sentence + suffix.
 - Legend under the score card shows all three bands with their underline samples.
 
 ## 4. Typography
@@ -81,48 +86,54 @@ Hebrew needs slightly more line-height than English. Keep 1.75 for mixed text. N
 
 ## 6. Design Tokens
 
-```css
-:root {
-  --bg:#FAF8F4; --surface:#FFFFFF; --surface-2:#F3EFE7; --border:#E3DDD1;
-  --text:#1F2328; --text-muted:#5C6370; --accent:#2B4C7E; --accent-fg:#FFFFFF;
-  --focus:#3B6FD8; --success:#2F6F5E; --warning:#9A6200; --danger:#A33A3A;
-  --hl-1-bg:#FDF1D6; --hl-1-line:#C99A2E;
-  --hl-2-bg:#F9DDB0; --hl-2-line:#B5701C;
-  --hl-3-bg:#F2C08F; --hl-3-line:#8A4510; --hl-3-badge:#8A4510;
-}
-.dark {
-  --bg:#14161A; --surface:#1C1F24; --surface-2:#23272E; --border:#30353D;
-  --text:#E8E6E1; --text-muted:#A0A6B0; --accent:#8FB0E6; --accent-fg:#0F1726;
-  --focus:#8FB0E6; --success:#7CC3AE; --warning:#E2B45C; --danger:#E08A8A;
-  --hl-1-bg:rgb(214 160 60/.16); --hl-1-line:#C9A35A;
-  --hl-2-bg:rgb(214 140 50/.26); --hl-2-line:#D9944A;
-  --hl-3-bg:rgb(214 120 40/.38); --hl-3-line:#F0A866; --hl-3-badge:#F0A866;
-}
-```
-Tailwind: `darkMode: 'class'` (default to `prefers-color-scheme`, overridable in Settings). Map the tokens in `theme.extend.colors` (`bg: 'var(--bg)'`, `hl1: { bg: 'var(--hl-1-bg)', line: 'var(--hl-1-line)' }`, …). In dark mode, the band-3 badge uses dark text (`--bg`).
+All tokens live in `src/app/globals.css` (`:root` light, `.dark` dark) and are exposed to Tailwind via `@theme inline` (`bg-surface`, `text-muted`, `border-border-strong`, `bg-accent-soft`, …). Values from the original palette, with these M1 additions and changes:
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--border` | #E3DDD1 | #30353D | decorative card edges only |
+| `--border-strong` | #8A8478 (3.5:1 on bg) | #737A86 (4.2:1) | every control edge (inputs, secondary buttons, segmented, radio cards) |
+| `--accent-soft` | accent @10% | accent @14% | selected nav item / chosen option tint |
+| `--warning` | **#8A5700** (was #9A6200; now ≥5.3:1 on surface-2) | #E2B45C | warning text |
+| `--danger-fg` | #FFF | #14161A | text on danger buttons |
+| `--shadow-lg` | soft | deep | dialogs, toasts |
+| `--radius-control/card/sheet` | 6 / 10 / 16px | | |
+
+Highlight underlines: `--hl-1-line` #A3741A, `--hl-2-line` #A05F12 in light (≥3:1 on their band and the page). Ignored sentences use `--text-muted`, never opacity.
+
+Checked contrast: all text tokens ≥4.5:1 on `--bg`, `--surface`, `--surface-2` in both themes; `--focus` (#2D5FC4 / #8FB0E6; ≥3:1 also on every highlight band) and `--border-strong` ≥3:1.
+
+**Type scale** is rem-based so the text-size setting scales everything: `text-micro` 11, `text-xs` 12, `text-caption` 13, `text-sm` 14, `text-ui` 15 (body), `text-base` 16, `text-h2` 17, `text-lg` 18, `text-title` 22. Never use `text-[Npx]`.
+
+**Text size** (Settings → תצוגה): `normal | large | larger` → root class `text-size-large` (112.5%) / `text-size-larger` (125%), applied before paint by the inline script in `layout.tsx` and kept in sync by `useApplyTextSize`.
+
+**Focus**: `:focus-visible` = 2px `--focus` outline, 2px offset (inset on the tab bar). **Motion**: `prefers-reduced-motion` disables animations/transitions and JS smooth scrolling.
 
 ## 7. Components
 
-- **AppShell**: header / tab bar, theme toggle.
-- **InputPanel**: Textarea (autosize, `dir="auto"`), FileDropZone, FilePickerButton, word/char counter, "נתח" primary button (disabled < 50 words, with a hint).
-- **ProgressPanel**: per-chunk list. Each row has its chunk index, a status icon (pending / running / done / failed + retry), and a mini bar. Includes an overall bar and a cancel button. Heuristic results render immediately. LLM results stream in per chunk.
-- **ScoreCard**: ring/meter 0–100, confidence label (נמוך/בינוני/גבוה), one-line plain summary, band legend.
-- **DocumentView**: paragraphs → SentenceSpan (band, badge, selected, edited states). Contenteditable in edit mode.
-- **Inspector / SentenceSheet** (same content component): probability + band, PatternList (PatternChip: category icon + name + one-line "why"), Explanation, RewriteCard (diff-style suggestion with **העתק** / **החל** / "הצע אחר"), prev/next.
-- **FilterBar**: 7 category toggle chips (אוצר מילים, מבנה, טון, עיצוב, רטוריקה, ציטוט, מילוי) with counts. ThresholdSlider (0–100, default from sensitivity, live re-render).
-- **SummaryPanel**: Top patterns (name × count, clickable → filters the doc), StatTiles: burstiness (sentence-length variance, with a short "human texts vary more" hint), lexical diversity (MTLD/TTR), avg sentence length, sentence count.
-- **HistoryList**: cards with title, date, score pill, language, word count. Actions: open, duplicate, delete. Has a search box.
-- **SettingsForm**: ProviderSelect (4 radio cards), ApiKeyField (masked, show/hide, "נשמר מקומית בדפדפן בלבד" notice, test-connection button), ModelSelect (fetched list + free text), Sensitivity (שמרני/מאוזן/רגיש → threshold 70/55/40), ExplanationLanguage (עברית/English/כשפת הטקסט), theme.
-- Primitives: Button (primary/secondary/ghost), IconButton, Chip, Pill, Toast, Dialog, BottomSheet, Drawer, Tooltip, Skeleton, Kbd.
+Reusable primitives in `src/components/ui/` (import from `@/components/ui`):
+
+| Component | Key props | Notes |
+|---|---|---|
+| `Button` | `variant` primary·secondary·ghost·danger·link, `size` sm·md·lg, `icon`, `iconOnly` (+`aria-label`) | ≥44px at md. A `text-<colour>` in `className` replaces the variant colour. `buttonClass()` and `ButtonLink` (next/link) share the look. |
+| `Field` | `label`, `hint`, `error`, `id?`, `labelAside`, `children(props)` | Render-prop: spread `props` (`id`, `aria-describedby` = hint+error, `aria-invalid`) on the control. |
+| `Input` / `Textarea` / `Select` | native props | `.control` style: `--border-strong`, 44px min height, red border when `aria-invalid`. |
+| `Checkbox` | `label`, `hint`, `checked`, `onChange(bool)` | |
+| `Card` / `Section` | `padding`; `Section`: `id`, `title`, `intro` | `Section` = `<section aria-labelledby>` + h2, `id` is the anchor. |
+| `SegmentedControl` | `legend`, `hint`, `value`, `options[{value,label,description}]`, `onChange`, `variant` segmented·cards, `columns` | Native radios in a `<fieldset>`: arrow keys and RTL for free. |
+| `Dialog` | `open`, `onClose`, `title`, `description`, `footer`, `variant` center·sheet·full, `initialFocus` | Native `<dialog>.showModal()`: inert page, Esc, backdrop click, focus returns to the opener. |
+| `ConfirmDialog` | `open`, `title`, `body`, `confirmLabel`, `danger`, `onConfirm`, `onCancel` | Cancel has initial focus. |
+| `ToastProvider` / `useToast()` | `toast(message, {tone, action, duration})` | Mounted in AppShell; region is `role="status"` (polite), never steals focus. |
+
+Screen components: **InputPanel** (3-step guide, local-only notice, drop zone + file button, title/text `Field`s with word·char counter, sample link, context disclosure, primary "לנתח את הטקסט" with "חסרות עוד N מילים" hint), **ProgressList** (`role=status` text + `progressbar`), **ResultsView** (sticky toolbar with always-visible band legend and "החשוד הקודם/הבא" buttons + "N מתוך M"; a polite live region announces the selected sentence; the document has one roving tab stop, Enter/Space selects; mobile summary is a full-screen `Dialog`, paragraph rewrite a sheet `Dialog`), **Inspector**, **SummaryPanel**, **DocxView**, **History** (labelled search, count, per-item delete and clear-all through `ConfirmDialog`, toast after deleting, empty state with CTA), **Settings** (three `Section`s with a sticky in-page nav; sensitivity/language/theme/text-size segmented controls). **AccessSection** (`src/components/settings/AccessSection.tsx`, M2): subscription status in `data-slot="subscription"` (active: "המנוי פעיל — אין צורך במפתח"; otherwise a compact upsell to /pricing), provider radio cards (OpenRouter, OpenAI, Anthropic, Google AI Studio, xAI), one panel for the chosen provider ("get a key" new-tab link, masked key field with show/hide, "remember on this device" checkbox, test button announced through the toast region, model Select with suggestions + custom id, disabled ChatGPT sign-in on OpenAI behind `NEXT_PUBLIC_CHATGPT_SIGNIN`), privacy note, "forget all keys" with `ConfirmDialog`, and the local-rules-only explanation. Keys live in `src/lib/keyStore.ts` (sessionStorage by default, localStorage when remembered), never in settings.
 
 ## 8. States
 
-- **Empty (first run, no key)**: a calm illustration-free card titled "הדביקו טקסט או העלו קובץ" with supported formats listed. If no API key is set, show an inline banner "חברו ספק AI כדי לקבל ניתוח מלא" → Settings. Heuristic-only analysis still works and is labelled "ניתוח מקומי בלבד".
+- **Empty (first run, no key, not Pro)**: a calm card titled "הדביקו טקסט או העלו קובץ". Above it the **onboarding chooser** (`OnboardingChooser`): מנוי Pro → /pricing · יש לי מפתח API → /settings#access · לנסות עם כללים מקומיים (sets `penprint:onboarded:v1`). Once dismissed it collapses into the one-line local-only notice; never two banners. Heuristic-only analysis still works and is labelled "ניתוח מקומי בלבד".
 - **Loading**: per-chunk progress; skeleton lines on the document; the score shows "—" until ≥1 chunk finishes, then updates provisionally ("זמני").
 - **Partial failure**: failed chunks get a neutral grey hatched background + "נכשל · נסה שוב". The score is computed from the done chunks, with a notice.
 - **Errors**: invalid key (401) → link to Settings; rate limit → auto-retry countdown; network → retry; unsupported/oversized/scanned PDF with no text → explain + suggest pasting. Errors appear inline near the source, not as modal walls. Messages are in Hebrew, with the provider's message collapsible.
 - **No findings**: "לא נמצאו משפטים מעל הסף" + a suggestion to lower the threshold.
-- **History empty**: "עדיין אין ניתוחים שמורים".
+- **History empty**: icon + "עוד לא ניתחת טקסטים…" + "לניתוח הראשון" button. Search with no match: "לא נמצאו ניתוחים…".
 
 ## 9. Micro-interactions
 
@@ -162,3 +173,53 @@ Shortcuts are disabled while focus is in an input or contenteditable (except Esc
 - **Usage meter**: words/analyses this month, shown in the header avatar menu + settings, with a soft warning at 80%.
 - **Pricing page** (`/pricing`): 3 tiers, Hebrew + English, ILS/USD.
 - Add: billing settings, team/shared docs, export report (PDF/DOCX with highlights), onboarding tour. Keep the token system unchanged so these slot in.
+
+## 13. Accessibility conformance (SI 5568 / WCAG 2.1 AA)
+
+Israeli law (Service Accessibility Adjustments Regulations 2013, reg. 35) requires ת״י 5568 level AA (WCAG 2.0 AA); we test against WCAG 2.1 AA. No overlay or toolbar widgets: accessibility lives in the components. The statement is `/accessibility`; update its dates and the coordinator's details whenever they change.
+
+**Automated audit.** `npm run a11y` (`scripts/a11y.mjs`, `@axe-core/playwright`) audits an already running app at `A11Y_BASE_URL` (default `http://localhost:3000`) in both languages (`penprint_lang` cookie; `A11Y_LOCALES=he|en` narrows): every route plus results with a selected sentence, the mobile summary dialog, consent banner, cookie-settings dialog, history with items and its delete confirm, settings with a provider selected and with a key error, account signed out (and signed in when `A11Y_SESSION_TOKEN` holds a signed `penprint_session`). Light and dark × 1280px and 320px, plus a check that `<html lang dir>` match the language, tags `wcag2a wcag2aa wcag21a wcag21aa`, plus a no-horizontal-scroll check at 320px. Exit 1 on any violation; `A11Y_ONLY=<state>` narrows the run, `A11Y_JSON=<file>` saves the report. It must stay at zero violations.
+
+**Manual checklist** (axe cannot see these; re-check when a screen changes):
+- Keyboard: Tab order follows the visual RTL order; no traps; Esc closes every dialog/sheet and focus returns to the opener (the mobile sentence sheet returns it to the sentence; prev/next inside the inspector keep focus on that button). After deleting a history item focus goes to the next item, else the heading, and a toast announces it.
+- Visible focus: 2px `--focus` ring everywhere, including sentences, cards' links, `summary`, banner buttons and the sheet itself.
+- Reflow: no horizontal scroll at 320px, at 640px (200% zoom) and at 320×256 (400% zoom: sticky bars become static below 30rem height via `.unstick-short`). Text-size "larger" and the WCAG 1.4.12 text-spacing override clip nothing.
+- Contrast: text ≥4.5:1, focus ring, control borders, highlight underlines ≥3:1 in both themes (see §6). No information is conveyed by opacity or colour alone.
+- Status messages go through the toast `role=status` region or a local `aria-live` region (analysis progress, selected sentence, test connection, copy/apply/ignore, delete); form errors use `Field`'s `error` (aria-invalid + aria-describedby), including the API-key field after a failed test.
+- Language: fragments in the other language carry `lang` (on the Hebrew UI: provider and plan names, model ids, provider error text; on the English UI: the Hebrew option labels), via `useLangAttr()` so the attribute is dropped when it matches the page; `dir="auto"` on user text. Every route has a unique `<title>` in the UI language; the results view sets one with the document title.
+- One `h1` per page, no skipped heading levels, landmarks labelled.
+- Targets ≥24×24px (most 44×44); `prefers-reduced-motion` disables animation and smooth scroll; nothing flashes.
+- Not automatable: real screen-reader passes (NVDA + Firefox/Chrome on Windows, VoiceOver on macOS/iOS), Windows high-contrast mode, and speech input. Record the results in the statement.
+
+## 14. Internationalization (M5)
+
+**Languages.** Hebrew (`he`, RTL, source language) and English (`en`, LTR). No i18n library: typed dictionaries in `src/lib/i18n/`.
+
+| File | Role |
+|---|---|
+| `he.ts` | Hebrew UI strings, `as const`. Exports `Dict`, a deep-widened `typeof he`. |
+| `en.ts` | `export const en: Dict`: a missing or extra key is a compile error. |
+| `legal.he.ts` / `legal.en.ts` | Privacy, terms and accessibility statement as `LegalDoc` (same section ids, so `/privacy#cookies` works in both). Server-only via `getLegal(locale)` in `legal.ts`. |
+| `config.ts` | `Locale`, `LANG_COOKIE`, `resolveLocale()`, `dirOf()`, `intlLocale()`, `fmt()`. No React/Next imports (safe in scripts). |
+| `server.ts` | `getLocale()`, `getT()`, `pageTitle(pick)` for server components and `generateMetadata`. |
+| `client.tsx` | `LocaleProvider` (root layout), `useT()`, `useLocale()`, `useSetLocale()`, `useLangAttr()`, `currentLocale()`. |
+| `src/lib/patterns/catalog.en.ts` | English description + fix for every pattern; `patternText(p, locale)` picks name/description/fix. |
+
+**Adding a string.** Add the key to `he.ts`, then to `en.ts` (TypeScript forces it). Read it with `const t = useT(); t.section.key` in client components, `const t = await getT()` in server components. Placeholders are `{name}`, filled with `fmt(t.x.y, { name })`; `npm run check:m3` asserts that both languages use the same placeholders and keys. Never hard-code UI text in components; numbers and dates use `intlLocale(locale)`.
+
+**Locale resolution** (server, every request): (1) `penprint_lang` cookie if it is `he` or `en`; (2) else `Accept-Language`: tags sorted by q-value, the first whose primary subtag is `he`/`iw` (→ Hebrew) or `en` (→ English) wins; (3) else Hebrew. Decision: the product's home market is Israeli academia, so a visitor whose browser names neither language gets Hebrew; anyone whose browser prefers English over Hebrew gets English. The root layout renders `<html lang dir>` from it, so the first paint is right with no flash, and all routes are dynamic.
+
+**Switching.** The header `LanguageSwitch` (shows the other language in that language, `lang` on the button, accessible name "Switch language to English" / "החלפת שפה: עברית"; icon-only below 400px) and Settings → Display → "Interface language · Language". Both call `useSetLocale()`: write the cookie (12 months, `SameSite=Lax`), flip `<html lang dir>` at once, `router.refresh()` so server components and metadata re-render; client state (an open analysis) survives. Nothing is stored server-side. The cookie is essential/preference and is listed in the privacy cookie table and consent text.
+
+**Explanation language.** `settings.explanationLanguage` is `'ui'` (default: follow the interface), `'he'`, `'en'` or `'auto'` (the analyzed text's language). Rewrites always stay in the sentence's language. Migration: a stored `'he'` (the old default) becomes `'ui'`.
+
+**Direction rules.**
+- Logical properties only; the three-column results layout, sheets, dialogs and toasts mirror automatically.
+- Icons that point (chevrons) are drawn for RTL and get `.dir-flip` (mirrored under `html[dir="ltr"]`); the external-link icon uses `rtl:-scale-x-100`. The `<summary>` marker is `◂` (RTL) / `▸` (LTR), turning down when open.
+- User text and model output: `dir="auto"`. Empty inputs use the UI direction for the placeholder.
+- Fonts: Assistant covers Latin for the English UI; the document stack falls back to Source Serif 4 for Latin.
+
+**Integrations.** Paddle checkout `locale` = UI language unless `NEXT_PUBLIC_PADDLE_LOCALE` is set; English price label from `NEXT_PUBLIC_PRO_PRICE_LABEL_EN`. Google sign-in passes `hl=<locale>`.
+
+**Rename storage migration.** `src/lib/storageMigration.ts` moves `kulmus:*` localStorage/sessionStorage keys to `penprint:*` once (copy if the new key is empty, then delete the old one) before the stores first read; the pre-paint theme script also reads the old settings key. IndexedDB `penprint-files` falls back to the legacy file database on a miss and moves the file. Cookies from the old name are ignored.
+

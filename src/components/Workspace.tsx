@@ -6,7 +6,8 @@ import { applyRewrite, enrich, initialAnalysis, type Progress } from '@/lib/runA
 import { segment } from '@/lib/segment';
 import { putFile } from '@/lib/blobStore';
 import { readBlocks, sentencesFromBlocks } from '@/lib/docx/model';
-import { getFromHistory, getSettings, hasKey, saveToHistory, useSettings } from '@/lib/store';
+import { loadAccount } from '@/lib/account';
+import { getFromHistory, getSettings, llmMode, saveToHistory, useSettings } from '@/lib/store';
 import type { Analysis } from '@/lib/types';
 import { InputPanel } from './InputPanel';
 import { ResultsView } from './results/ResultsView';
@@ -35,7 +36,7 @@ export function Workspace() {
         setAnalysis(a);
         // An analysis interrupted by a reload/navigation still has pending sentences: resume them.
         const pending = new Set(Object.values(a.results).filter((r) => r.status === 'pending').map((r) => r.id));
-        if (pending.size && hasKey(getSettings())) run(a, pending);
+        if (pending.size) loadAccount().then(() => llmMode(getSettings()) && run(a, pending));
       }
     }
   }, [params]);
@@ -49,7 +50,7 @@ export function Workspace() {
     setDirty(false);
     saveToHistory(a);
     const settings = getSettings();
-    if (!hasKey(settings)) return;
+    if (!llmMode(settings)) return;
     setRunning(true);
     try {
       const final = await enrich(
@@ -96,7 +97,7 @@ export function Workspace() {
       results: Object.fromEntries(
         Object.entries(analysis.results).map(([k, r]) => [
           k,
-          !edited.size || edited.has(r.id) ? { ...r, edited: false, status: hasKey(settings) ? 'pending' : 'heuristic-only' } : r,
+          !edited.size || edited.has(r.id) ? { ...r, edited: false, status: llmMode(settings) ? 'pending' : 'heuristic-only' } : r,
         ]),
       ) as Analysis['results'],
     };

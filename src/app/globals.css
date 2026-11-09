@@ -2,28 +2,40 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ---------- Design tokens ----------
+   Contrast (checked, M4): text ≥ 4.5:1 on --bg/--surface/--surface-2; --border-strong and --focus ≥ 3:1
+   against --bg/--surface/--surface-2 and every highlight band (light --focus 3.59:1 on --hl-3-bg);
+   highlight underlines (--hl-N-line) ≥ 3:1 against their band background and the page.
+   --border is decorative only (card edges), never the sole edge of a control. */
 :root {
   --bg: #faf8f4;
   --surface: #ffffff;
   --surface-2: #f3efe7;
   --border: #e3ddd1;
+  --border-strong: #8a8478;
   --text: #1f2328;
   --text-muted: #5c6370;
   --accent: #2b4c7e;
   --accent-fg: #ffffff;
-  --focus: #3b6fd8;
+  --accent-soft: rgb(43 76 126 / 0.1);
+  --focus: #2d5fc4;
   --success: #2f6f5e;
-  --warning: #9a6200;
+  --warning: #8a5700;
   --danger: #a33a3a;
+  --danger-fg: #ffffff;
   --hl-1-bg: #fdf1d6;
-  --hl-1-line: #c99a2e;
+  --hl-1-line: #a3741a;
   --hl-2-bg: #f9ddb0;
-  --hl-2-line: #b5701c;
+  --hl-2-line: #a05f12;
   --hl-3-bg: #f2c08f;
   --hl-3-line: #8a4510;
   --hl-3-badge: #8a4510;
   --hl-3-badge-fg: #ffffff;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 0.16);
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-sheet: 16px;
   color-scheme: light;
 }
 
@@ -32,14 +44,17 @@
   --surface: #1c1f24;
   --surface-2: #23272e;
   --border: #30353d;
+  --border-strong: #737a86;
   --text: #e8e6e1;
   --text-muted: #a0a6b0;
   --accent: #8fb0e6;
   --accent-fg: #0f1726;
+  --accent-soft: rgb(143 176 230 / 0.14);
   --focus: #8fb0e6;
   --success: #7cc3ae;
   --warning: #e2b45c;
   --danger: #e08a8a;
+  --danger-fg: #14161a;
   --hl-1-bg: rgb(214 160 60 / 0.16);
   --hl-1-line: #c9a35a;
   --hl-2-bg: rgb(214 140 50 / 0.26);
@@ -49,6 +64,7 @@
   --hl-3-badge: #f0a866;
   --hl-3-badge-fg: #14161a;
   --shadow: none;
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
 
@@ -57,17 +73,41 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-muted: var(--text-muted);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
   --color-focus: var(--focus);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
   --font-ui: "Assistant", system-ui, sans-serif;
   --font-doc: "Frank Ruhl Libre", "Source Serif 4", "Noto Serif Hebrew", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Type scale in rem so the text-size setting (root font-size) scales everything. */
+  --text-micro: 0.6875rem; /* 11 */
+  --text-micro--line-height: 1.35;
+  --text-caption: 0.8125rem; /* 13 */
+  --text-caption--line-height: 1.4;
+  --text-ui: 0.9375rem; /* 15 */
+  --text-ui--line-height: 1.5;
+  --text-h2: 1.0625rem; /* 17 */
+  --text-h2--line-height: 1.4;
+  --text-title: 1.375rem; /* 22 */
+  --text-title--line-height: 1.3;
+  --text-score: 2.5rem; /* 40 */
+  --text-score--line-height: 1;
+}
+
+/* Text size setting (Settings → Display). Everything is rem-based, so this scales the whole UI. */
+html.text-size-large {
+  font-size: 112.5%;
+}
+html.text-size-larger {
+  font-size: 125%;
 }
 
 html,
@@ -77,31 +117,126 @@ body {
 }
 body {
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Visible focus everywhere (keyboard). 2px ring + 2px offset, ≥3:1 against bg. */
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+.focus-ring-inset:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Skip link: hidden until focused */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  top: -100px;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 700;
+}
+.skip-link:focus {
+  top: 0.75rem;
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow);
+}
+
+/* Form controls share one look */
+.control {
+  width: 100%;
+  min-height: 2.75rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  padding-inline: 0.75rem;
+  padding-block: 0.5rem;
+}
+.control::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+.control[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.control:focus-visible {
+  outline-offset: 0;
+  border-color: var(--focus);
+}
+
+/* Segmented control / radio cards built on native radios */
+.seg-option:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Native <dialog> */
+dialog.ui-dialog {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  padding: 0;
+  max-width: min(42rem, calc(100vw - 2rem));
+  width: 100%;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  border-radius: var(--radius-card);
+}
+dialog.ui-dialog.sheet {
+  max-width: 100vw;
+  margin: auto 0 0 0;
+  max-height: 92dvh;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  border-bottom: 0;
+}
+dialog.ui-dialog.full {
+  max-width: 100vw;
+  max-height: 100dvh;
+  height: 100dvh;
+  margin: 0;
+  border-radius: 0;
+  border: 0;
+}
+@media (min-width: 768px) {
+  dialog.ui-dialog.sheet {
+    max-width: min(42rem, calc(100vw - 2rem));
+    margin: auto;
+    border-radius: var(--radius-card);
+    border-bottom: 1px solid var(--border);
+  }
+}
+dialog.ui-dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+dialog.ui-dialog[open] {
+  animation: fadein 150ms ease-out;
+}
+dialog.ui-dialog.sheet[open] {
+  animation: sheetup 200ms ease-out;
 }
 
 .doc {
   font-family: var(--font-doc);
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.75;
 }
 @media (max-width: 767px) {
   .doc {
-    font-size: 17px;
+    font-size: 1.0625rem;
     line-height: 1.7;
   }
 }
@@ -153,11 +288,12 @@ body {
   outline-offset: 2px;
 }
 .sent.dim {
-  opacity: 0.55;
+  /* ignored ("marked as fine") sentence: quieter but still readable (text-muted is ≥4.5:1) */
+  color: var(--text-muted);
 }
 .badge {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   vertical-align: super;
@@ -220,6 +356,9 @@ mark.hit {
   animation: sheetup 200ms ease-out;
 }
 
+html {
+  scroll-padding-top: 4.5rem;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -230,8 +369,58 @@ mark.hit {
   }
 }
 
+/* Disclosure marker that survives display:flex on <summary> (RTL: points left, down when open).
+   The empty alt text keeps screen readers from announcing the glyph. */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary::before {
+  content: "◂" / "";
+  display: inline-block;
+  margin-inline-end: 0.4em;
+  font-size: 0.8em;
+  transition: transform 150ms;
+}
+details[open] > summary::before {
+  transform: rotate(-90deg);
+}
+/* LTR (English UI): the marker points right and turns down when open. */
+html[dir="ltr"] summary::before {
+  content: "▸" / "";
+}
+html[dir="ltr"] details[open] > summary::before {
+  transform: rotate(90deg);
+}
+/* Icons that imply direction are drawn for RTL and mirrored in LTR. */
+html[dir="ltr"] .dir-flip {
+  transform: scaleX(-1);
+}
+
 input[type="range"] {
   accent-color: var(--accent);
+}
+
+/* Room under the footer for the fixed mobile tab bar. */
+.tabbar-pad {
+  padding-bottom: 5rem;
+}
+@media (min-width: 768px) {
+  .tabbar-pad {
+    padding-bottom: 0;
+  }
+}
+/* Short viewports (landscape phones, 400% zoom on a desktop = 320×256 CSS px): sticky/fixed bars
+   would cover most of the screen, so they scroll with the page instead (WCAG 1.4.10 reflow). */
+@media (max-height: 30rem) {
+  .unstick-short {
+    position: static !important;
+  }
+  .tabbar-pad {
+    padding-bottom: 0;
+  }
 }
 
 .pb-safe {
@@ -242,9 +431,9 @@ input[type="range"] {
 .docx-host {
   /* the page is always paper-white, so keep light highlight tokens inside it */
   --hl-1-bg: #fdf1d6;
-  --hl-1-line: #c99a2e;
+  --hl-1-line: #a3741a;
   --hl-2-bg: #f9ddb0;
-  --hl-2-line: #b5701c;
+  --hl-2-line: #a05f12;
   --hl-3-bg: #f2c08f;
   --hl-3-line: #8a4510;
   --hl-3-badge: #8a4510;
@@ -282,7 +471,7 @@ input[type="range"] {
   color: inherit;
 }
 .docx-host .badge {
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 /* one continuous band per sentence even when it spans several formatted runs */
 .docx-host .sent {
@@ -295,4 +484,9 @@ input[type="range"] {
   text-decoration: underline dotted var(--text-muted);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.3em;
+}
+
+/* Hebrew placeholders inside monospace (key/model) fields read badly in the mono face */
+.font-mono::placeholder {
+  font-family: var(--font-ui);
 }

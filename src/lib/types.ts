@@ -1,6 +1,10 @@
 import type { PatternCategory } from './patterns/catalog';
 
-export type ProviderId = 'openrouter' | 'google' | 'openai' | 'anthropic';
+export type ProviderId = 'openrouter' | 'google' | 'openai' | 'anthropic' | 'xai';
+export const PROVIDER_IDS: readonly ProviderId[] = ['openrouter', 'openai', 'anthropic', 'google', 'xai'];
+export function isProviderId(v: unknown): v is ProviderId {
+  return typeof v === 'string' && (PROVIDER_IDS as readonly string[]).includes(v);
+}
 export type Lang = 'he' | 'en';
 
 export interface Sentence {
@@ -67,7 +71,8 @@ export interface Analysis {
   stats: DocStats;
   /** Whole-document assessment: authorship shows far more clearly across a document than in one sentence. */
   document?: DocumentAssessment;
-  meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string };
+  /** `mode`: who paid for the model calls (the user's own key, or the Pro subscription). Absent = local rules only. */
+  meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string; mode?: 'byok' | 'managed' };
   /** Original file kept in IndexedDB (key = analysis id) so the formatted Word view can be rendered. */
   source?: { kind: 'docx'; fileName: string };
 }
@@ -123,13 +128,16 @@ export interface AssessResponse {
 
 export interface Settings {
   provider: ProviderId;
-  keys: Partial<Record<ProviderId, string>>;
+  /** API keys are NOT part of settings: they live in the separate key store (src/lib/keyStore.ts). */
   models: Record<ProviderId, string>;
   useDecisionModel: boolean;
   decisionModel: string;
   sensitivity: 'low' | 'medium' | 'high';
-  explanationLanguage: 'he' | 'en' | 'auto';
+  /** 'ui' follows the interface language (default); 'auto' follows the analyzed text. */
+  explanationLanguage: 'ui' | 'he' | 'en' | 'auto';
   theme: 'system' | 'light' | 'dark';
+  /** UI text size: applied as a root class (text-size-large / text-size-larger). */
+  textSize: 'normal' | 'large' | 'larger';
   alwaysShowPercent: boolean;
 }
 
@@ -161,4 +169,16 @@ export interface AnalyzeChunkResponse {
   llm?: LlmOut;
   decisions?: Record<number, number>; // id -> 0-100
   errors?: { llm?: string; decision?: string };
+}
+
+/** GET /api/me: who is signed in and what they can use. Nothing here is stored by the server. */
+export interface AccountInfo {
+  signedIn: boolean;
+  email?: string;
+  name?: string;
+  plan: 'pro' | 'free';
+  subscription?: { status: string; renewsAt?: string; cancelsAt?: string; graceUntil?: number };
+  /** Provider and model used for Pro requests (only for subscribers). */
+  managed?: { provider: ProviderId; model: string };
+  configured: { google: boolean; billing: boolean };
 }
