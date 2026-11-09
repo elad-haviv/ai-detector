@@ -98,6 +98,8 @@ export interface DocumentAssessment {
   aiEvidence?: string[];
   humanEvidence?: string[];
   summary?: string;
+  /** per-paragraph AI probability from the document pass (paragraph index → 0-100) */
+  paragraphs?: Record<number, number>;
   status: 'pending' | 'done' | 'failed' | 'local';
   error?: string;
 }
@@ -106,14 +108,15 @@ export interface AssessRequest {
   provider: ProviderId;
   apiKey?: string;
   model: string;
-  text: string;
+  /** paragraphs with their index in the document */
+  paragraphs: { i: number; text: string }[];
   features: StyleFeatures;
   explanationLanguage: Lang;
   decisionModel?: string;
   openrouterKey?: string;
 }
 export interface AssessResponse {
-  llm?: { ai_probability: number; ai_evidence: string[]; human_evidence: string[]; summary: string };
+  llm?: { ai_probability: number; ai_evidence: string[]; human_evidence: string[]; summary: string; paragraphs?: { i: number; ai_probability: number }[] };
   decision?: number;
   errors?: { llm?: string; decision?: string };
 }

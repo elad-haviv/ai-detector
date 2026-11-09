@@ -1,5 +1,5 @@
 'use client';
-import { HEURISTICS_VERSION, blend, computeStats, documentPrior, findHits, heuristicResults, heuristicScore, localDocument, overallScore } from './heuristics';
+import { HEURISTICS_VERSION, blend, computeStats, documentPrior, findHits, heuristicResults, heuristicScore, localDocument, overallScore, sentencePrior } from './heuristics';
 import { chunkSentences, detectLang, segment } from './segment';
 import { hasKey } from './store';
 import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, AssessRequest, AssessResponse, DocumentAssessment, Lang, Sentence, SentenceResult, Settings } from './types';
@@ -56,7 +56,7 @@ function shortTitle(t: string): string {
   return cut.slice(0, cut.lastIndexOf(' ') > 20 ? cut.lastIndexOf(' ') : 50).replace(/[.,:;]+$/, '') + '…';
 }
 
-function contextFor(analysis: Analysis, chunk: Sentence[]): string {
+export function contextFor(analysis: Analysis, chunk: Sentence[]): string {
   const firstPara = chunk[0].paragraph;
   const prev = analysis.sentences.filter((s) => s.paragraph === firstPara - 1).map((s) => s.text).join(' ');
   const d = analysis.document;
@@ -66,7 +66,19 @@ function contextFor(analysis: Analysis, chunk: Sentence[]): string {
         (d.aiEvidence?.length ? ` AI evidence: ${d.aiEvidence.join('; ')}.` : '') +
         (d.humanEvidence?.length ? ` Human evidence: ${d.humanEvidence.join('; ')}.` : '')
       : '';
-  return [assessment, analysis.context && `Author's note on the text: ${analysis.context}`, prev && `Previous paragraph: ${prev.slice(-600)}`]
+  const paraIds = [...new Set(chunk.map((s) => s.paragraph))];
+  const paraLines =
+    d?.paragraphs && paraIds.some((pi) => d.paragraphs![pi] !== undefined)
+      ? 'PARAGRAPH ASSESSMENT (use as the prior for the sentences in each paragraph):\n' +
+        paraIds
+          .filter((pi) => d.paragraphs![pi] !== undefined)
+          .map((pi) => {
+            const ids = chunk.filter((s) => s.paragraph === pi).map((s) => s.id);
+            return `¶${pi} (sentence ids ${ids[0]}-${ids[ids.length - 1]}): ${d.paragraphs![pi]}%`;
+          })
+          .join('\n')
+      : '';
+  return [assessment, paraLines, analysis.context && `Author's note on the text: ${analysis.context}`, prev && `Previous paragraph: ${prev.slice(-600)}`]
     .filter(Boolean)
     .join('\n');
 }
@@ -116,15 +128,20 @@ export async function enrich(
       provider: settings.provider,
       apiKey: settings.keys[settings.provider],
       model: settings.models[settings.provider],
-      text: documentText(a),
+      paragraphs: documentParagraphs(a),
       features: local.features,
       explanationLanguage: lang,
       decisionModel: a.meta.decisionModel,
       openrouterKey: settings.keys.openrouter,
     };
     try {
-      const res = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
-      const json = (await res.json()) as AssessResponse;
+      let json: AssessResponse = {};
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+        json = (await res.json()) as AssessResponse;
+        if (json.llm || res.status === 401 || res.status === 403 || /invalid_key|missing_key/.test(json.errors?.llm || '')) break;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
       a = {
         ...a,
         document: {
@@ -134,6 +151,7 @@ export async function enrich(
           aiEvidence: json.llm?.ai_evidence,
           humanEvidence: json.llm?.human_evidence,
           summary: json.llm?.summary,
+          paragraphs: json.llm?.paragraphs?.length ? Object.fromEntries(json.llm.paragraphs.map((p) => [p.i, p.ai_probability])) : undefined,
           status: json.llm ? 'done' : 'failed',
           error: json.errors?.llm,
         },
@@ -144,7 +162,6 @@ export async function enrich(
     }
     emit();
   }
-  const prior = documentPrior(a.document);
 
   const runChunk = async (i: number) => {
     const chunk = chunks[i];
@@ -199,7 +216,8 @@ export async function enrich(
         patterns: Array.from(new Set([...prev.hits.map((h) => h.patternId), ...((l?.patterns || []) as string[])])),
         status: l || dec !== undefined ? 'done' : 'failed',
       };
-      next.probability = blend(next, prior);
+      const sp = sentencePrior(a.document, s.paragraph);
+      next.probability = blend(next, sp.prior, sp.weight);
       results[s.id] = next;
     }
     if (data.llm?.overall) {
@@ -239,6 +257,13 @@ export function applyRewrite(a: Analysis, id: number, text: string): Analysis {
   };
   const document = a.document ? { ...a.document, ...localDocument(sentences, results), status: a.document.status } : undefined;
   return { ...a, sentences, results, document, overall: { ...overallScore(sentences, results, undefined, document), summary: a.overall.summary }, stats: computeStats(sentences) };
+}
+
+/** Paragraphs with their index, as sent to the document pass. */
+export function documentParagraphs(a: Analysis): { i: number; text: string }[] {
+  const paras = new Map<number, string[]>();
+  for (const s of a.sentences) (paras.get(s.paragraph) || paras.set(s.paragraph, []).get(s.paragraph)!).push(s.text);
+  return [...paras.entries()].sort((x, y) => x[0] - y[0]).map(([i, t]) => ({ i, text: t.join(' ') }));
 }
 
 export function documentText(a: Analysis): string {

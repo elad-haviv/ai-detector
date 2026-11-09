@@ -113,17 +113,39 @@ export async function chatJson({ provider, apiKey, model, system, user, maxToken
   return text;
 }
 
-/** Tolerant JSON extraction: strips code fences and leading prose. */
+/** First complete top-level JSON object in a string (brace matching that respects strings). */
+function firstJsonObject(t: string): string | null {
+  const start = t.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = start; i < t.length; i++) {
+    const c = t[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) return t.slice(start, i + 1);
+  }
+  return null;
+}
+
+/** Tolerant JSON extraction: strips code fences, leading prose and anything after the first object. */
 export function parseJsonLoose<T>(text: string): T {
-  let t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  const t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
   try {
     return JSON.parse(t) as T;
   } catch {
-    const start = t.indexOf('{');
-    const end = t.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      t = t.slice(start, end + 1);
-      return JSON.parse(t) as T;
+    const obj = firstJsonObject(t);
+    if (obj) {
+      try {
+        return JSON.parse(obj) as T;
+      } catch {}
     }
     throw new ProviderError('invalid JSON from model', 502, 'bad_response');
   }

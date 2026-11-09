@@ -1,0 +1,182 @@
+{
+  "gemini-4-argon-behaviorism": {
+    "model": "google/gemini-4-argon",
+    "topic": "ביהביוריזם",
+    "prompt": "כתוב טקסט אינפורמטיבי בעברית בנושא \"ביהביוריזם\", באורך של כ-380 מילים, ב-3 עד 4 פסקאות. משלב כתיבה אנציקלופדי-אקדמי. פרוזה רציפה בלבד: בלי כותרות, בלי רשימות ובלי הדגשות. החזר רק את הטקסט.",
+    "generation_id": "gen-1794215258-DPw45Ql0l9y88fjErtzK",
+    "usage": {
+      "prompt_tokens": 122,
+      "completion_tokens": 953,
+      "total_tokens": 1075,
+      "cost": 0.009774,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.009774,
+        "upstream_inference_prompt_cost": 0.000244,
+        "upstream_inference_completions_cost": 0.00953
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "words": 306
+  },
+  "gemini-4-argon-democracy": {
+    "model": "google/gemini-4-argon",
+    "topic": "דמוקרטיה",
+    "prompt": "כתוב טקסט אינפורמטיבי בעברית בנושא \"דמוקרטיה\", באורך של כ-380 מילים, ב-3 עד 4 פסקאות. משלב כתיבה אנציקלופדי-אקדמי. פרוזה רציפה בלבד: בלי כותרות, בלי רשימות ובלי הדגשות. החזר רק את הטקסט.",
+    "generation_id": "gen-1794215258-Ccji6TBzDQPmNb6fRPbF",
+    "usage": {
+      "prompt_tokens": 121,
+      "completion_tokens": 967,
+      "total_tokens": 1088,
+      "cost": 0.009912,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.009912,
+        "upstream_inference_prompt_cost": 0.000242,
+        "upstream_inference_completions_cost": 0.00967
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "words": 334
+  },
+  "claude-opus-5.5-industrial-revolution": {
+    "model": "anthropic/claude-opus-5.5",
+    "topic": "המהפכה התעשייתית",
+    "prompt": "כתוב טקסט אינפורמטיבי בעברית בנושא \"המהפכה התעשייתית\", באורך של כ-380 מילים, ב-3 עד 4 פסקאות. משלב כתיבה אנציקלופדי-אקדמי. פרוזה רציפה בלבד: בלי כותרות, בלי רשימות ובלי הדגשות. החזר רק את הטקסט.",
+    "generation_id": "gen-1794215258-i1uOQfjzIUuLByd67ZEU",
+    "usage": {
+      "prompt_tokens": 149,
+      "completion_tokens": 1667,
+      "total_tokens": 1816,
+      "cost": 0.033936,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.033936,
+        "upstream_inference_prompt_cost": 0.000596,
+        "upstream_inference_completions_cost": 0.03334
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 405,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "words": 290
+  },
+  "gpt-6-astra-immune-system": {
+    "model": "openai/gpt-6-astra",
+    "topic": "מערכת החיסון",
+    "prompt": "כתוב טקסט אינפורמטיבי בעברית בנושא \"מערכת החיסון\", באורך של כ-380 מילים, ב-3 עד 4 פסקאות. משלב כתיבה אנציקלופדי-אקדמי. פרוזה רציפה בלבד: בלי כותרות, בלי רשימות ובלי הדגשות. החזר רק את הטקסט.",
+    "generation_id": "gen-1794215258-nnCA55RpVcHcilziMDkE",
+    "usage": {
+      "prompt_tokens": 86,
+      "completion_tokens": 1153,
+      "total_tokens": 1239,
+      "cost": 0.05851,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.05851,
+        "upstream_inference_prompt_cost": 0.00086,
+        "upstream_inference_completions_cost": 0.05765
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 157,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "words": 392
+  },
+  "claude-opus-5.5-photosynthesis": {
+    "model": "anthropic/claude-opus-5.5",
+    "topic": "פוטוסינתזה",
+    "prompt": "כתוב טקסט אינפורמטיבי בעברית בנושא \"פוטוסינתזה\", באורך של כ-380 מילים, ב-3 עד 4 פסקאות. משלב כתיבה אנציקלופדי-אקדמי. פרוזה רציפה בלבד: בלי כותרות, בלי רשימות ובלי הדגשות. החזר רק את הטקסט.",
+    "generation_id": "gen-1794215258-rhUcdMQViGZaAs05jpu0",
+    "usage": {
+      "prompt_tokens": 147,
+      "completion_tokens": 3099,
+      "total_tokens": 3246,
+      "cost": 0.062568,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.062568,
+        "upstream_inference_prompt_cost": 0.000588,
+        "upstream_inference_completions_cost": 0.06198
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 1639,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "words": 320
+  },
+  "gpt-6-astra-renewable-energy": {
+    "model": "openai/gpt-6-astra",
+    "topic": "אנרגיה מתחדשת",
+    "prompt": "כתוב טקסט אינפורמטיבי בעברית בנושא \"אנרגיה מתחדשת\", באורך של כ-380 מילים, ב-3 עד 4 פסקאות. משלב כתיבה אנציקלופדי-אקדמי. פרוזה רציפה בלבד: בלי כותרות, בלי רשימות ובלי הדגשות. החזר רק את הטקסט.",
+    "generation_id": "gen-1794215258-unIwywnAssJlvzUBOHxa",
+    "usage": {
+      "prompt_tokens": 87,
+      "completion_tokens": 1090,
+      "total_tokens": 1177,
+      "cost": 0.05537,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.05537,
+        "upstream_inference_prompt_cost": 0.00087,
+        "upstream_inference_completions_cost": 0.0545
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 155,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "words": 385
+  }
+}

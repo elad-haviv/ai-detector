@@ -134,20 +134,22 @@ export function heuristicResults(sentences: Sentence[]): Record<number, Sentence
 }
 
 /**
- * Blend available signals. The LLM reads meaning and context, the decision model gives a calibrated
- * yes/no probability, and the lexical rules are precise but shallow, so they get the least weight.
+ * Blend available signals for one sentence. The language model reads it in its document context;
+ * the sentence-level decision model and lexical rules are weak alone, so they only nudge.
  */
-export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>, docPrior?: number): number {
+export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>, docPrior?: number, priorWeight = 0.25): number {
+  // Weights from the Hebrew evaluation (eval/README.md): sentence-level AUROC was 0.999 for the
+  // context-aware language model, 0.87 for the decision model and 0.58 for lexical rules.
   const parts: [number, number][] = [];
-  if (r.llm !== undefined) parts.push([r.llm, 0.6]);
-  if (r.decision !== undefined) parts.push([r.decision, 0.25]);
-  parts.push([r.heuristic, parts.length ? 0.15 : 1]);
+  if (r.llm !== undefined) parts.push([r.llm, 0.8]);
+  if (r.decision !== undefined) parts.push([r.decision, 0.1]);
+  parts.push([r.heuristic, parts.length ? 0.1 : 1]);
   const wsum = parts.reduce((a, [, w]) => a + w, 0);
   let p = parts.reduce((a, [v, w]) => a + v * w, 0) / wsum;
   // Strong lexical evidence should not be fully washed out by a lenient model.
   if (r.heuristic >= 70) p = Math.max(p, r.heuristic * 0.75);
   // Pull toward the whole-document verdict: a sentence is read as part of its document.
-  if (docPrior !== undefined) p = 0.75 * p + 0.25 * docPrior;
+  if (docPrior !== undefined) p = (1 - priorWeight) * p + priorWeight * docPrior;
   return Math.round(Math.max(0, Math.min(100, p)));
 }
 
@@ -200,16 +202,46 @@ export function decisionAdjusted(raw: number): number {
   return Math.round(Math.max(0, Math.min(100, ((raw - 55) / 35) * 100)));
 }
 
-/** Combined whole-document prior used for sentences and the overall score. */
+/**
+ * Pool probabilities in logit space (weighted log-odds sum). Independent signals that agree add up
+ * instead of averaging toward 50; disagreeing signals cancel. Weights were chosen on the Hebrew
+ * evaluation set (eval/): averaging compressed fully AI texts to 54-83%, pooling gives 70-92%
+ * while human texts stay 7-23%.
+ */
+export function poolLogits(parts: [number, number][]): number {
+  const logit = (p: number) => {
+    const q = Math.max(0.02, Math.min(0.98, p / 100));
+    return Math.log(q / (1 - q));
+  };
+  const z = parts.reduce((a, [p, w]) => a + w * logit(p), 0);
+  return Math.round(100 / (1 + Math.exp(-z)));
+}
+
+/**
+ * Prior for one sentence: its paragraph's score when the document pass gave one (precise, handles
+ * documents that mix human and AI paragraphs), else the document prior; weight says how hard to
+ * anchor (paragraph priors are local, so they can anchor harder without smearing a mixed text).
+ */
+export function sentencePrior(doc: DocumentAssessment | undefined, paragraph: number): { prior?: number; weight: number } {
+  const docP = documentPrior(doc);
+  const para = doc?.paragraphs?.[paragraph];
+  if (para === undefined) return { prior: docP, weight: 0.25 };
+  // The paragraph score already accounts for the whole document; pooling it again with the document
+  // prior pulled AI paragraphs inside human documents back to ~50 (eval: mixed-behaviorism).
+  return { prior: para, weight: 0.4 };
+}
+
+/** Combined whole-document prior used to anchor sentence scores. */
 export function documentPrior(doc?: DocumentAssessment): number | undefined {
   if (!doc) return undefined;
   const lf = Math.min(1, doc.features.sentences / 12);
-  const parts: [number, number][] = [[doc.style, 0.3 * lf]];
-  if (doc.llm !== undefined) parts.push([doc.llm, 0.55]);
+  if (doc.llm === undefined) return lf < 0.5 ? undefined : doc.style;
+  const parts: [number, number][] = [
+    [doc.llm, 0.7],
+    [doc.style, 0.25 * lf],
+  ];
   if (doc.decision !== undefined) parts.push([decisionAdjusted(doc.decision), 0.15]);
-  const w = parts.reduce((a, [, x]) => a + x, 0);
-  if (!w || (doc.llm === undefined && lf < 0.5)) return undefined;
-  return Math.round(parts.reduce((a, [v, x]) => a + v * x, 0) / w);
+  return poolLogits(parts);
 }
 
 /**
@@ -246,14 +278,25 @@ export function overallScore(
   const sentenceAgg = 0.6 * (acc / wsum) + 0.4 * flaggedShare * 100;
 
   // Whole-document evidence dominates; the sentence aggregate refines it.
-  const parts: [number, number][] = [[sentenceAgg, checked.length ? 0.25 : 0.15]];
   const lf = doc ? Math.min(1, doc.features.sentences / 12) : 0;
-  if (doc) parts.push([doc.style, 0.25 * lf]);
-  if (doc?.llm !== undefined) parts.push([doc.llm, 0.4]);
-  else if (llmOverall !== undefined) parts.push([llmOverall, 0.25]);
-  if (doc?.decision !== undefined) parts.push([decisionAdjusted(doc.decision), 0.1]);
-  const w = parts.reduce((a, [, x]) => a + x, 0);
-  const p = parts.reduce((a, [v, x]) => a + v * x, 0) / w;
+  const docVerdict = doc?.llm ?? llmOverall;
+  let parts: [number, number][];
+  let p: number;
+  if (docVerdict !== undefined) {
+    parts = [
+      [docVerdict, doc?.llm !== undefined ? 0.7 : 0.5],
+      [sentenceAgg, 0.2],
+    ];
+    if (doc) parts.push([doc.style, 0.25 * lf]);
+    if (doc?.decision !== undefined) parts.push([decisionAdjusted(doc.decision), 0.15]);
+    p = poolLogits(parts);
+  } else {
+    // local only: no model verdict, so stay conservative (plain weighted mean)
+    parts = [[sentenceAgg, 0.15]];
+    if (doc) parts.push([doc.style, 0.25 * lf]);
+    const w = parts.reduce((a, [, x]) => a + x, 0);
+    p = parts.reduce((a, [v, x]) => a + v * x, 0) / w;
+  }
 
   const coverage = checked.length ? wsum / totalWords : 0;
   const avgDis = checked.length ? disagreement / checked.length : 100;

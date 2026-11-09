@@ -1,0 +1,21 @@
+{
+  "mixed-behaviorism.txt": {
+    "paragraphs": [
+      "H",
+      "H",
+      "A",
+      "H",
+      "H"
+    ],
+    "note": "H = Hebrew Wikipedia (2021), A = AI-generated (same topic)"
+  },
+  "mixed-renewable-energy.txt": {
+    "paragraphs": [
+      "A",
+      "H",
+      "A",
+      "A"
+    ],
+    "note": "H = Hebrew Wikipedia (2021), A = AI-generated (same topic)"
+  }
+}
