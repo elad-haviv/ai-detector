@@ -237,3 +237,55 @@ input[type="range"] {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ---------- Word (docx-preview) view ---------- */
+.docx-host {
+  /* the page is always paper-white, so keep light highlight tokens inside it */
+  --hl-1-bg: #fdf1d6;
+  --hl-1-line: #c99a2e;
+  --hl-2-bg: #f9ddb0;
+  --hl-2-line: #b5701c;
+  --hl-3-bg: #f2c08f;
+  --hl-3-line: #8a4510;
+  --hl-3-badge: #8a4510;
+  --hl-3-badge-fg: #ffffff;
+  --surface-2: #f3efe7;
+  --text: #1f2328;
+  overflow-x: auto;
+  border-radius: 10px;
+}
+.docx-host .docx-wrapper {
+  background: var(--surface-2) !important;
+  padding: 16px !important;
+  border-radius: 10px;
+}
+.dark .docx-host .docx-wrapper {
+  background: #2a2e35 !important;
+}
+.docx-host .docx-wrapper > section.docx {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15) !important;
+  margin-bottom: 16px !important;
+}
+.docx-host.flow .docx-wrapper {
+  padding: 0 !important;
+  background: transparent !important;
+}
+.docx-host.flow .docx-wrapper > section.docx {
+  padding: 20px 18px !important;
+  width: auto !important;
+  min-height: 0 !important;
+  border-radius: 10px;
+  box-shadow: none !important;
+  border: 1px solid var(--border);
+}
+.docx-host .sent {
+  color: inherit;
+}
+.docx-host .badge {
+  font-size: 10px;
+}
+/* one continuous band per sentence even when it spans several formatted runs */
+.docx-host .sent {
+  padding: 0;
+  border-radius: 0;
+}

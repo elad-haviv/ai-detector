@@ -4,6 +4,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { computeStats, findHits, heuristicScore, overallScore } from '@/lib/heuristics';
 import { applyRewrite, enrich, initialAnalysis, type Progress } from '@/lib/runAnalysis';
 import { segment } from '@/lib/segment';
+import { putFile } from '@/lib/blobStore';
+import { readBlocks, sentencesFromBlocks } from '@/lib/docx/model';
 import { getFromHistory, hasKey, saveToHistory, useSettings } from '@/lib/store';
 import type { Analysis } from '@/lib/types';
 import { InputPanel } from './InputPanel';
@@ -62,6 +64,14 @@ export function Workspace() {
     run(a);
   }
 
+  async function startDocx(bytes: ArrayBuffer, fileName: string, title: string, context: string) {
+    const sentences = sentencesFromBlocks(await readBlocks(bytes));
+    const a = initialAnalysis('', title || fileName.replace(/\.docx$/i, ''), context, settings, { sentences, source: { kind: 'docx', fileName } });
+    await putFile(a.id, bytes);
+    router.replace(`/?id=${a.id}`);
+    run(a);
+  }
+
   function reanalyze() {
     if (!analysis) return;
     const edited = new Set(Object.values(analysis.results).filter((r) => r.edited || r.status === 'failed').map((r) => r.id));
@@ -103,7 +113,7 @@ export function Workspace() {
     update({ ...analysis, sentences, results, overall: { ...overallScore(sentences, results), summary: analysis.overall.summary }, stats: computeStats(sentences) });
   }
 
-  if (!analysis) return <InputPanel onAnalyze={start} />;
+  if (!analysis) return <InputPanel onAnalyze={start} onAnalyzeDocx={startDocx} />;
 
   return (
     <ResultsView

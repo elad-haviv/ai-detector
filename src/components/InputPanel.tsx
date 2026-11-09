@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { he } from '@/lib/i18n/he';
 import { countWords } from '@/lib/segment';
 import { hasKey, useSettings } from '@/lib/store';
+import { readBlocks } from '@/lib/docx/model';
 import { IconInfo, IconUpload } from './icons';
 
 const MIN_WORDS = 25;
@@ -17,9 +18,12 @@ const SAMPLE = `בעולם המשתנה של ימינו, הבינה המלאכו
 
 export function InputPanel({
   onAnalyze,
+  onAnalyzeDocx,
 }: {
   onAnalyze: (text: string, title: string, context: string) => void;
+  onAnalyzeDocx: (bytes: ArrayBuffer, fileName: string, title: string, context: string) => void;
 }) {
+  const [docx, setDocx] = useState<{ bytes: ArrayBuffer; name: string; text: string } | null>(null);
   const [settings] = useSettings();
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
@@ -39,10 +43,25 @@ export function InputPanel({
     try {
       const lower = file.name.toLowerCase();
       if (lower.endsWith('.txt') || lower.endsWith('.md')) {
+        setDocx(null);
         setText(await file.text());
         setTitle(file.name.replace(/\.[^.]+$/, ''));
         return;
       }
+      if (lower.endsWith('.docx')) {
+        const bytes = await file.arrayBuffer();
+        const blocks = await readBlocks(bytes);
+        const t = blocks.map((b) => b.text.trim()).join('\n\n');
+        if (!t.trim()) {
+          setError(he.errors.invalidFile);
+          return;
+        }
+        setText(t);
+        setTitle(file.name.replace(/\.[^.]+$/, ''));
+        setDocx({ bytes, name: file.name, text: t });
+        return;
+      }
+      setDocx(null);
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetch('/api/extract', { method: 'POST', body: fd });
@@ -167,6 +186,17 @@ export function InputPanel({
           />
         </details>
 
+        {docx && (
+          <p className={`mt-2 rounded-md px-3 py-2 text-[13px] ${docx.text === text ? 'bg-accent/10' : 'bg-surface-2 text-muted'}`}>
+            {docx.text === text ? (
+              <>
+                קובץ Word: <strong dir="auto">{docx.name}</strong>. התוצאות יוצגו על המסמך המעוצב עצמו, ואפשר יהיה להוריד אותו אחרי עריכה.
+              </>
+            ) : (
+              'שינית את הטקסט, ולכן הניתוח יוצג כטקסט רגיל ולא בתצוגת Word.'
+            )}
+          </p>
+        )}
         {error && <p className="mt-3 text-[14px] text-danger" role="alert">{error}</p>}
         {tooShort && <p className="mt-3 text-[14px] text-muted">{he.errors.tooShort}</p>}
         {tooLong && <p className="mt-3 text-[14px] text-danger">{he.errors.tooLong.replace('{max}', MAX_WORDS.toLocaleString('he-IL'))}</p>}
@@ -175,7 +205,9 @@ export function InputPanel({
           <button
             type="button"
             disabled={words < MIN_WORDS || tooLong || busy}
-            onClick={() => onAnalyze(text, title, context)}
+            onClick={() =>
+              docx && docx.text === text ? onAnalyzeDocx(docx.bytes, docx.name, title, context) : onAnalyze(text, title, context)
+            }
             className="min-h-11 rounded-md bg-accent px-6 font-bold text-accent-fg disabled:opacity-40"
           >
             {he.input.analyzeButton}
@@ -186,7 +218,7 @@ export function InputPanel({
             </button>
           )}
           {text && (
-            <button type="button" onClick={() => { setText(''); setTitle(''); }} className="min-h-11 px-2 text-muted hover:text-text">
+            <button type="button" onClick={() => { setText(''); setTitle(''); setDocx(null); }} className="min-h-11 px-2 text-muted hover:text-text">
               {he.input.clearButton}
             </button>
           )}

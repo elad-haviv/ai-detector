@@ -16,7 +16,7 @@ export function countWords(text: string): number {
 /** Abbreviations that should not end a sentence. */
 const ABBREV = /(?:\b(?:e\.g|i\.e|et al|etc|vs|cf|Dr|Mr|Mrs|Ms|Prof|Fig|No|pp?|vol|ed|eds)\.)$/i;
 
-function splitSentences(paragraph: string): string[] {
+export function splitSentences(paragraph: string): string[] {
   const out: string[] = [];
   const Seg = (Intl as unknown as { Segmenter?: typeof Intl.Segmenter }).Segmenter;
   let pieces: string[];

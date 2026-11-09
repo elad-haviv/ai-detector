@@ -110,8 +110,10 @@ export function saveToHistory(a: Analysis) {
 }
 export function deleteFromHistory(id: string) {
   safeSet(HISTORY_KEY, loadHistory().filter((x) => x.id !== id));
+  import('./blobStore').then((m) => m.deleteFile(id));
 }
 export function clearHistory() {
+  for (const a of loadHistory()) import('./blobStore').then((m) => m.deleteFile(a.id));
   safeSet(HISTORY_KEY, []);
 }
 export function getFromHistory(id: string): Analysis | undefined {

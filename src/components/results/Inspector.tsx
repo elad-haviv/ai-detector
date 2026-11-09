@@ -64,6 +64,7 @@ export function Inspector({
   decisionModel?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const band = bandOf(result.probability, threshold);
   const patterns = result.patterns.map((id) => PATTERN_BY_ID[id]).filter(Boolean);
 
@@ -168,7 +169,40 @@ export function Inspector({
         )}
       </section>
 
+      {editing !== null && (
+        <section>
+          <h3 className="mb-1 text-[13px] font-bold text-muted">עריכה ידנית</h3>
+          <textarea
+            value={editing}
+            onChange={(e) => setEditing(e.target.value)}
+            dir="auto"
+            rows={4}
+            autoFocus
+            className="doc w-full rounded-md border border-border bg-surface p-2 !text-[16px]"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => {
+                if (editing.trim() && editing.trim() !== sentence.text) onApply(editing.trim());
+                setEditing(null);
+              }}
+              className="min-h-10 rounded-md bg-accent px-4 font-semibold text-accent-fg"
+            >
+              שמירה
+            </button>
+            <button onClick={() => setEditing(null)} className="min-h-10 rounded-md border border-border px-4 font-semibold">
+              ביטול
+            </button>
+          </div>
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+        {editing === null && (
+          <button onClick={() => setEditing(sentence.text)} className="min-h-10 rounded-md px-3 text-[14px] font-semibold text-accent hover:bg-surface-2">
+            עריכה ידנית
+          </button>
+        )}
         <button onClick={onIgnore} className="min-h-10 rounded-md px-3 text-[14px] font-semibold text-muted hover:bg-surface-2 hover:text-text">
           {result.ignored ? 'ביטול הסימון כתקין' : he.inspector.ignore}
         </button>

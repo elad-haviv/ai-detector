@@ -18,8 +18,14 @@ export function explanationLang(s: Settings, text: string): Lang {
 }
 
 /** Build an analysis with instant local results; LLM results are added by `enrich`. */
-export function initialAnalysis(text: string, title: string, context: string, settings: Settings): Analysis {
-  const sentences = segment(text);
+export function initialAnalysis(
+  text: string,
+  title: string,
+  context: string,
+  settings: Settings,
+  opts?: { sentences?: Sentence[]; source?: Analysis['source'] },
+): Analysis {
+  const sentences = opts?.sentences ?? segment(text);
   const results = heuristicResults(sentences);
   const llmOn = hasKey(settings);
   if (llmOn) for (const r of Object.values(results)) r.status = 'pending';
@@ -38,6 +44,7 @@ export function initialAnalysis(text: string, title: string, context: string, se
       decisionModel: llmOn && settings.useDecisionModel && settings.keys.openrouter ? settings.decisionModel : undefined,
       heuristicsVersion: HEURISTICS_VERSION,
     },
+    source: opts?.source,
   };
 }
 

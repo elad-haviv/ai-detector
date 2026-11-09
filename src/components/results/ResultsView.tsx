@@ -7,7 +7,10 @@ import { errorCode, explanationLang, type Progress } from '@/lib/runAnalysis';
 import { groupParagraphs } from '@/lib/segment';
 import { useSettings } from '@/lib/store';
 import type { Analysis, SentenceResult } from '@/lib/types';
-import { IconFilter, IconRefresh, IconX } from '../icons';
+import { getFile } from '@/lib/blobStore';
+import { buildEditedDocx } from '@/lib/docx/model';
+import { IconDownload, IconFilter, IconRefresh, IconX } from '../icons';
+import { DocxView, type Decor } from './DocxView';
 import { Inspector } from './Inspector';
 import { CATEGORIES, Filters, ProgressList, ScoreCard, Stats, TopPatterns } from './SummaryPanel';
 import { BAND_LABEL, CONFIDENCE_LABEL, ScoreRing, bandOf } from './shared';
@@ -36,6 +39,11 @@ export function ResultsView(props: Props) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [paraRewrite, setParaRewrite] = useState<{ paragraph: number; loading: boolean; text?: string; changes?: string[]; error?: string } | null>(null);
   const docRef = useRef<HTMLDivElement>(null);
+  const [docxUnavailable, setDocxUnavailable] = useState(false);
+  const [preferText, setPreferText] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const isDocx = analysis.source?.kind === 'docx' && !docxUnavailable;
+  const showDocx = isDocx && !preferText;
 
   const visible = useCallback(
     (r: SentenceResult | undefined) => {
@@ -50,6 +58,41 @@ export function ResultsView(props: Props) {
 
   const flaggedIds = useMemo(() => analysis.sentences.filter((s) => visible(analysis.results[s.id])).map((s) => s.id), [analysis, visible]);
   const paragraphs = useMemo(() => groupParagraphs(analysis.sentences), [analysis.sentences]);
+
+  const decor = useCallback(
+    (id: number): Decor => {
+      const r = analysis.results[id];
+      const band = visible(r) ? bandOf(r.probability, threshold) : 0;
+      const showBadge = band >= 2 || (band === 1 && settings.alwaysShowPercent);
+      return {
+        cls: [band ? `b${band}` : '', r?.status === 'pending' ? 'pending' : '', r?.status === 'failed' ? 'failed' : '', r?.edited ? 'edited' : '', r?.ignored ? 'dim' : '']
+          .filter(Boolean)
+          .join(' '),
+        badge: r?.edited ? { text: '✎ נערך', cls: '!border !border-accent !text-accent' } : showBadge ? { text: `${r.probability}%`, cls: `b${band}` } : undefined,
+        label: band ? `משפט חשוד, ${r.probability}%, ${BAND_LABEL[band]}` : undefined,
+      };
+    },
+    [analysis.results, visible, threshold, settings.alwaysShowPercent],
+  );
+
+  async function downloadDocx() {
+    setDownloading(true);
+    try {
+      const original = await getFile(analysis.id);
+      if (!original) return setDocxUnavailable(true);
+      const blob = await buildEditedDocx(original, analysis.sentences);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (analysis.source?.fileName || 'document.docx').replace(/\.docx$/i, '') + ' (קולמוס).docx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   const select = useCallback((id: number | null) => {
     setSelected(id);
@@ -140,6 +183,7 @@ export function ResultsView(props: Props) {
   const inspector =
     current && currentResult ? (
       <Inspector
+        key={current.id}
         sentence={current}
         result={currentResult}
         threshold={threshold}
@@ -216,7 +260,7 @@ export function ResultsView(props: Props) {
         <aside className="hidden space-y-4 lg:block lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">{summary}</aside>
 
         <section className="min-w-0">
-          <div className="mx-auto max-w-[720px]">
+          <div className={`mx-auto ${showDocx ? 'max-w-[900px]' : 'max-w-[720px]'}`}>
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <h1 dir="auto" className="me-auto text-[19px] font-bold md:text-[22px]">
                 {analysis.title}
@@ -224,6 +268,16 @@ export function ResultsView(props: Props) {
               <button onClick={props.onReanalyze} disabled={running} className="hidden min-h-10 items-center gap-1.5 rounded-md border border-border px-3 font-semibold disabled:opacity-40 lg:flex" title="Ctrl+Enter">
                 <IconRefresh width={16} /> נתח מחדש
               </button>
+              {isDocx && (
+                <>
+                  <button onClick={downloadDocx} disabled={downloading} className="flex min-h-10 items-center gap-1.5 rounded-md bg-accent px-3 font-semibold text-accent-fg disabled:opacity-50">
+                    <IconDownload width={16} /> {downloading ? 'מכין…' : 'הורדת Word'}
+                  </button>
+                  <button onClick={() => setPreferText((v) => !v)} className="min-h-10 rounded-md border border-border px-3 text-[14px] font-semibold">
+                    {preferText ? 'תצוגת Word' : 'תצוגת טקסט'}
+                  </button>
+                </>
+              )}
               <button onClick={props.onNew} className="min-h-10 rounded-md px-3 font-semibold text-accent">
                 {he.results.newAnalysis}
               </button>
@@ -250,6 +304,19 @@ export function ResultsView(props: Props) {
               </div>
             )}
 
+            {showDocx ? (
+              <DocxView
+                fileKey={analysis.id}
+                sentences={analysis.sentences}
+                decor={decor}
+                selected={selected}
+                onSelect={(id) => {
+                  select(id);
+                  setSheetFull(false);
+                }}
+                onUnavailable={() => setDocxUnavailable(true)}
+              />
+            ) : (
             <div ref={docRef} className="doc card p-5 md:p-8" role="document">
               {paragraphs.map((para) => (
                 <p key={para[0].paragraph} dir="auto" className="mb-4 last:mb-0">
@@ -293,6 +360,7 @@ export function ResultsView(props: Props) {
                 </p>
               ))}
             </div>
+            )}
             {flaggedIds.length === 0 && !running && <p className="mt-3 text-center text-[14px] text-muted">{he.results.noneFlagged}</p>}
             <p className="mt-6 text-[12px] text-muted">
               {he.disclaimer.body}

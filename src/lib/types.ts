@@ -56,6 +56,8 @@ export interface Analysis {
   overall: { probability: number; confidence: 'low' | 'medium' | 'high'; summary?: string };
   stats: DocStats;
   meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string };
+  /** Original file kept in IndexedDB (key = analysis id) so the formatted Word view can be rendered. */
+  source?: { kind: 'docx'; fileName: string };
 }
 
 export interface Settings {
