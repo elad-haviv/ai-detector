@@ -1,5 +1,5 @@
 import { PATTERNS, type Pattern } from './patterns/catalog';
-import type { Analysis, DocStats, PatternHit, Sentence, SentenceResult } from './types';
+import type { Analysis, DocStats, DocumentAssessment, PatternHit, Sentence, SentenceResult, StyleFeatures } from './types';
 import { countWords } from './segment';
 
 export const HEURISTICS_VERSION = 'h1';
@@ -137,7 +137,7 @@ export function heuristicResults(sentences: Sentence[]): Record<number, Sentence
  * Blend available signals. The LLM reads meaning and context, the decision model gives a calibrated
  * yes/no probability, and the lexical rules are precise but shallow, so they get the least weight.
  */
-export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>): number {
+export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>, docPrior?: number): number {
   const parts: [number, number][] = [];
   if (r.llm !== undefined) parts.push([r.llm, 0.6]);
   if (r.decision !== undefined) parts.push([r.decision, 0.25]);
@@ -146,7 +146,70 @@ export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>)
   let p = parts.reduce((a, [v, w]) => a + v * w, 0) / wsum;
   // Strong lexical evidence should not be fully washed out by a lenient model.
   if (r.heuristic >= 70) p = Math.max(p, r.heuristic * 0.75);
+  // Pull toward the whole-document verdict: a sentence is read as part of its document.
+  if (docPrior !== undefined) p = 0.75 * p + 0.25 * docPrior;
   return Math.round(Math.max(0, Math.min(100, p)));
+}
+
+const CONNECTOR_START =
+  /^["“(]?(?:furthermore|moreover|additionally|consequently|in addition|despite|ultimately|overall|notably|importantly|crucially|thus|therefore|יתרה מכך|בנוסף|זאת ועוד|מעבר לכך|לפיכך|על כן|לסיכום|כמו כן|חשוב לציין|יש לציין)(?![\p{L}])/iu;
+const CITATION = /\[\d+(?:\s*[,–-]\s*\d+)*\]|\([^()]{0,80}(?:19|20)\d{2}[a-z]?(?:,\s*(?:p|pp|עמ)\.?\s*\d+)?\)|\(שם/u;
+
+/** Document-level style features. AI authorship shows in their combination across many sentences. */
+export function styleFeatures(sentences: Sentence[], results: Record<number, SentenceResult>): StyleFeatures {
+  const n = sentences.length || 1;
+  const lens = sentences.map((s) => s.words);
+  const mean = lens.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(lens.reduce((a, b) => a + (b - mean) ** 2, 0) / n);
+  const rate = (f: (s: Sentence) => boolean) => Math.round((sentences.filter(f).length / n) * 100) / 100;
+  return {
+    sentences: sentences.length,
+    hitRate: rate((s) => (results[s.id]?.hits.length ?? 0) > 0),
+    triadRate: rate((s) => !!results[s.id]?.hits.some((h) => h.patternId === 'rule-of-three')),
+    connectorRate: rate((s) => CONNECTOR_START.test(s.text.trim())),
+    citationRate: rate((s) => CITATION.test(s.text)),
+    cv: mean ? Math.round((sd / mean) * 100) / 100 : 0,
+    avgLen: Math.round(mean * 10) / 10,
+  };
+}
+
+/**
+ * Style index 0-100 (logistic). Hand-set from contrasting human and AI academic texts:
+ * dense patterns and triads, metronomic sentence length, long sentences and stock connectors push up;
+ * citations push down. Unreliable on short texts, so callers weight it by length.
+ */
+export function styleScore(f: StyleFeatures): number {
+  const z =
+    -3 +
+    5 * f.hitRate +
+    3 * f.triadRate +
+    6 * Math.max(0, 0.45 - f.cv) +
+    0.08 * Math.max(0, f.avgLen - 20) +
+    2 * f.connectorRate -
+    1.5 * Math.min(1, f.citationRate * 4);
+  return Math.round(100 / (1 + Math.exp(-z)));
+}
+
+export function localDocument(sentences: Sentence[], results: Record<number, SentenceResult>): DocumentAssessment {
+  const features = styleFeatures(sentences, results);
+  return { style: styleScore(features), features, status: 'local' };
+}
+
+/** Decision models lean toward "AI" on any formal text; stretch their useful 0.55-0.9 range to 0-100. */
+export function decisionAdjusted(raw: number): number {
+  return Math.round(Math.max(0, Math.min(100, ((raw - 55) / 35) * 100)));
+}
+
+/** Combined whole-document prior used for sentences and the overall score. */
+export function documentPrior(doc?: DocumentAssessment): number | undefined {
+  if (!doc) return undefined;
+  const lf = Math.min(1, doc.features.sentences / 12);
+  const parts: [number, number][] = [[doc.style, 0.3 * lf]];
+  if (doc.llm !== undefined) parts.push([doc.llm, 0.55]);
+  if (doc.decision !== undefined) parts.push([decisionAdjusted(doc.decision), 0.15]);
+  const w = parts.reduce((a, [, x]) => a + x, 0);
+  if (!w || (doc.llm === undefined && lf < 0.5)) return undefined;
+  return Math.round(parts.reduce((a, [v, x]) => a + v * x, 0) / w);
 }
 
 /**
@@ -158,12 +221,13 @@ export function overallScore(
   sentences: Sentence[],
   results: Record<number, SentenceResult>,
   llmOverall?: number,
+  doc?: DocumentAssessment,
 ): Analysis['overall'] {
   const all = sentences.filter((s) => results[s.id] && !results[s.id].ignored);
   const totalWords = all.reduce((a, s) => a + Math.max(1, s.words), 0);
   const checked = all.filter((s) => results[s.id].llm !== undefined || results[s.id].decision !== undefined);
-  const basis: 'model' | 'local' = checked.length ? 'model' : 'local';
-  const pool = basis === 'model' ? checked : all;
+  const basis: 'model' | 'local' = checked.length || doc?.llm !== undefined ? 'model' : 'local';
+  const pool = checked.length ? checked : all;
 
   let wsum = 0;
   let acc = 0;
@@ -179,14 +243,32 @@ export function overallScore(
   }
   if (!wsum) return { probability: 0, confidence: 'low', coverage: 0, basis, flaggedShare: 0 };
   const flaggedShare = flaggedWords / wsum;
-  let p = 0.6 * (acc / wsum) + 0.4 * flaggedShare * 100;
-  if (llmOverall !== undefined && basis === 'model') p = 0.6 * p + 0.4 * llmOverall;
-  const coverage = basis === 'model' ? wsum / totalWords : 0;
+  const sentenceAgg = 0.6 * (acc / wsum) + 0.4 * flaggedShare * 100;
+
+  // Whole-document evidence dominates; the sentence aggregate refines it.
+  const parts: [number, number][] = [[sentenceAgg, checked.length ? 0.25 : 0.15]];
+  const lf = doc ? Math.min(1, doc.features.sentences / 12) : 0;
+  if (doc) parts.push([doc.style, 0.25 * lf]);
+  if (doc?.llm !== undefined) parts.push([doc.llm, 0.4]);
+  else if (llmOverall !== undefined) parts.push([llmOverall, 0.25]);
+  if (doc?.decision !== undefined) parts.push([decisionAdjusted(doc.decision), 0.1]);
+  const w = parts.reduce((a, [, x]) => a + x, 0);
+  const p = parts.reduce((a, [v, x]) => a + v * x, 0) / w;
+
+  const coverage = checked.length ? wsum / totalWords : 0;
   const avgDis = checked.length ? disagreement / checked.length : 100;
+  const signals = parts.map(([v]) => v);
+  const spread = Math.max(...signals) - Math.min(...signals);
   let confidence: 'low' | 'medium' | 'high' = 'medium';
-  if (basis === 'local' || wsum < 120 || avgDis > 40 || coverage < 0.5) confidence = 'low';
-  else if (wsum >= 300 && avgDis < 22 && coverage >= 0.9) confidence = 'high';
-  return { probability: Math.round(p), confidence, coverage: Math.round(coverage * 100) / 100, basis, flaggedShare: Math.round(flaggedShare * 100) / 100 };
+  if (basis === 'local' || totalWords < 120 || (checked.length && coverage < 0.5) || spread > 60) confidence = 'low';
+  else if (doc?.llm !== undefined && totalWords >= 250 && spread < 35 && avgDis < 30 && (coverage >= 0.9 || !checked.length)) confidence = 'high';
+  return {
+    probability: Math.round(p),
+    confidence,
+    coverage: Math.round(coverage * 100) / 100,
+    basis,
+    flaggedShare: Math.round(flaggedShare * 100) / 100,
+  };
 }
 
 export function sensitivityThreshold(s: 'low' | 'medium' | 'high'): number {

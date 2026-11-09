@@ -8,6 +8,18 @@ import { BandLegend, CONFIDENCE_LABEL, ScoreRing, scoreBand } from './shared';
 
 export const CATEGORIES: PatternCategory[] = ['vocabulary', 'structure', 'tone', 'formatting', 'rhetoric', 'citation', 'filler'];
 
+function SignalRow({ label, value, note }: { label: string; value?: number; note?: string }) {
+  return (
+    <div className="flex items-center gap-2 text-[12px]">
+      <span className="w-28 shrink-0 text-muted">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+        {value !== undefined && <div className="h-full rounded-full bg-accent" style={{ width: `${value}%` }} />}
+      </div>
+      <span className="w-12 text-end tabular-nums">{note && value === undefined ? note : value !== undefined ? `${value}%` : '—'}</span>
+    </div>
+  );
+}
+
 export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pending: boolean; dirty: boolean }) {
   const o = analysis.overall;
   const local = o.basis === 'local' || (!o.basis && !analysis.meta.provider);
@@ -34,7 +46,7 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
         <p className="mt-3 rounded-md bg-surface-2 p-2 text-[13px]">
           {pending
             ? 'מודל השפה עדיין קורא את הטקסט. עד שיחזרו תוצאות, המספר מבוסס רק על ביטויים מוכרים ואינו הערכה של הטקסט כולו.'
-            : `המספר מבוסס רק על כללים מקומיים, שמזהים ביטויים מובהקים (נמצאו ב-${hits} משפטים). הם לא יודעים לזהות טקסט AI שכתוב "נקי", ולכן ציון נמוך כאן לא אומר שהטקסט אנושי. לניתוח אמיתי צריך לחבר ספק מודל בהגדרות.`}
+            : `המספר מבוסס רק על מדדי סגנון ועל ביטויים מוכרים (נמצאו ב-${hits} משפטים), בלי מודל שפה. זו אינדיקציה בלבד: טקסט AI "נקי" וקצר עלול לקבל כאן ציון נמוך. לניתוח מלא צריך לחבר ספק מודל בהגדרות.`}
         </p>
       ) : (
         <p className="mt-3 text-[14px]">{band.description}</p>
@@ -52,15 +64,40 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
           {analysis.overall.summary}
         </p>
       )}
+      {analysis.document && (
+        <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+          <div className="text-[12px] font-semibold text-muted">ממה מורכב הציון</div>
+          <SignalRow label="שיפוט המסמך כולו" value={analysis.document.llm} note={analysis.document.status === 'pending' ? 'בודק…' : analysis.document.status === 'failed' ? 'נכשל' : undefined} />
+          <SignalRow label="מדד סגנון" value={analysis.document.style} note={analysis.document.features.sentences < 8 ? 'טקסט קצר, משקל נמוך' : undefined} />
+          {analysis.document.decision !== undefined && <SignalRow label="מודל החלטה" value={analysis.document.decision} />}
+          {(!!analysis.document.aiEvidence?.length || !!analysis.document.humanEvidence?.length) && (
+            <details className="pt-1 text-[12px]">
+              <summary className="cursor-pointer font-semibold text-muted">ראיות</summary>
+              {!!analysis.document.aiEvidence?.length && (
+                <>
+                  <div className="mt-1 font-semibold">מצביע על AI</div>
+                  <ul className="list-disc space-y-0.5 ps-4">{analysis.document.aiEvidence.map((e, i) => <li key={i} dir="auto">{e}</li>)}</ul>
+                </>
+              )}
+              {!!analysis.document.humanEvidence?.length && (
+                <>
+                  <div className="mt-1 font-semibold">מצביע על כתיבה אנושית</div>
+                  <ul className="list-disc space-y-0.5 ps-4">{analysis.document.humanEvidence.map((e, i) => <li key={i} dir="auto">{e}</li>)}</ul>
+                </>
+              )}
+            </details>
+          )}
+        </div>
+      )}
       {dirty && <p className="mt-2 text-[13px] font-semibold text-warning">בוצעו שינויים. כדאי להריץ ניתוח מחדש.</p>}
 
       <details className="mt-3 text-[12px] text-muted">
         <summary className="cursor-pointer font-semibold">מה המספר אומר?</summary>
         <p className="mt-1 leading-relaxed">
-          זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. היא משקללת את ממוצע הציונים של המשפטים (לפי אורכם) עם החלק
-          של הטקסט שנמצא במשפטים בעלי סבירות גבוהה. כל משפט מקבל ציון משלושה מקורות: מודל השפה (60%), מודל ההחלטה (25%) והכללים
-          המקומיים (15%). משפטים שהמודל עוד לא בדק לא נכנסים לחישוב. בלי מודל, המספר נשען רק על הכללים המקומיים ולכן אינו מבחין בין
-          אנושי ל-AI.
+          זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. כתיבת AI מודרנית ניכרת בעיקר ברמת המסמך: משפטים ארוכים
+          ומאוזנים באופן אחיד, רשימות של שלושה שחוזרות, מחברים חלקים, היעדר הפניות ופרטים אישיים. לכן הציון נשען קודם כול על שיפוט המסמך
+          כולו בידי מודל השפה ועל מדד סגנון שמחושב מקומית, ורק אחר כך על ממוצע המשפטים ועל מודל ההחלטה. גם ציוני המשפטים מושפעים
+          מהשיפוט הכולל, כי משפט נקרא כחלק מהמסמך שלו.
         </p>
       </details>
       <div className="mt-3">

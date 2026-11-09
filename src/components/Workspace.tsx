@@ -124,7 +124,7 @@ export function Workspace() {
       const h = heuristicScore(hits);
       results[s.id] = { id: s.id, heuristic: h, probability: h, hits, patterns: hits.map((x) => x.patternId), status: 'heuristic-only', edited: true };
     }
-    update({ ...analysis, sentences, results, overall: { ...overallScore(sentences, results), summary: analysis.overall.summary }, stats: computeStats(sentences) });
+    update({ ...analysis, sentences, results, overall: { ...overallScore(sentences, results, undefined, analysis.document), summary: analysis.overall.summary }, stats: computeStats(sentences) });
   }
 
   if (!analysis) return <InputPanel onAnalyze={start} onAnalyzeDocx={startDocx} />;
@@ -139,7 +139,7 @@ export function Workspace() {
       onToggleIgnore={(id) => {
         const r = analysis.results[id];
         const results = { ...analysis.results, [id]: { ...r, ignored: !r.ignored } };
-        const next = { ...analysis, results, overall: { ...overallScore(analysis.sentences, results), summary: analysis.overall.summary } };
+        const next = { ...analysis, results, overall: { ...overallScore(analysis.sentences, results, undefined, analysis.document), summary: analysis.overall.summary } };
         setAnalysis(next);
         saveToHistory(next);
       }}

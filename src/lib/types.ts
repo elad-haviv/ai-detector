@@ -65,9 +65,57 @@ export interface Analysis {
     flaggedShare?: number;
   };
   stats: DocStats;
+  /** Whole-document assessment: authorship shows far more clearly across a document than in one sentence. */
+  document?: DocumentAssessment;
   meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string };
   /** Original file kept in IndexedDB (key = analysis id) so the formatted Word view can be rendered. */
   source?: { kind: 'docx'; fileName: string };
+}
+
+export interface StyleFeatures {
+  sentences: number;
+  /** share of sentences with any lexical AI pattern */
+  hitRate: number;
+  /** share of sentences with a list of three */
+  triadRate: number;
+  /** share of sentences opening with a stock connector */
+  connectorRate: number;
+  /** share of sentences carrying a citation ([3], (Smith, 2020)) */
+  citationRate: number;
+  /** sentence-length coefficient of variation */
+  cv: number;
+  avgLen: number;
+}
+
+export interface DocumentAssessment {
+  /** local style index 0-100 from StyleFeatures */
+  style: number;
+  features: StyleFeatures;
+  /** language model's whole-document probability 0-100 */
+  llm?: number;
+  /** decision model's whole-document probability 0-100 (raw) */
+  decision?: number;
+  aiEvidence?: string[];
+  humanEvidence?: string[];
+  summary?: string;
+  status: 'pending' | 'done' | 'failed' | 'local';
+  error?: string;
+}
+
+export interface AssessRequest {
+  provider: ProviderId;
+  apiKey?: string;
+  model: string;
+  text: string;
+  features: StyleFeatures;
+  explanationLanguage: Lang;
+  decisionModel?: string;
+  openrouterKey?: string;
+}
+export interface AssessResponse {
+  llm?: { ai_probability: number; ai_evidence: string[]; human_evidence: string[]; summary: string };
+  decision?: number;
+  errors?: { llm?: string; decision?: string };
 }
 
 export interface Settings {

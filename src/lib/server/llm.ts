@@ -186,3 +186,37 @@ export async function listOpenRouterModels(): Promise<{ id: string; name: string
   const data = await res.json();
   return (data?.data || []).map((m: { id: string; name: string }) => ({ id: m.id, name: m.name }));
 }
+
+/** One whole-document yes/no question to a decision model. Returns probability 0-100. */
+export async function decideDocument(args: { apiKey: string; model: string; question: string; text: string; signal?: AbortSignal }): Promise<number> {
+  const res = await fetch('https://openrouter.ai/api/alpha/decisions', {
+    method: 'POST',
+    signal: args.signal,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${args.apiKey}`,
+      'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
+      'X-Title': 'Kulmus AI-writing coach',
+    },
+    body: JSON.stringify({
+      model: args.model,
+      state: args.text,
+      questions: {
+        doc_ai: {
+          type: 'noul',
+          instructions: args.question,
+          criteria: {
+            true: 'Written or mostly written by an AI language model.',
+            false: 'Written by a human author (formal academic register alone is not evidence of AI).',
+          },
+        },
+      },
+    }),
+  });
+  if (!res.ok) await failFrom(res);
+  const data = await res.json();
+  const a = data?.answers?.doc_ai;
+  const p = typeof a?.noul === 'number' ? a.noul : a?.probabilities?.true;
+  if (typeof p !== 'number') throw new ProviderError('no decision answer', 502, 'bad_response');
+  return Math.round(p * 100);
+}

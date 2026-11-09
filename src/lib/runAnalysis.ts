@@ -1,8 +1,8 @@
 'use client';
-import { HEURISTICS_VERSION, blend, computeStats, findHits, heuristicResults, heuristicScore, overallScore } from './heuristics';
+import { HEURISTICS_VERSION, blend, computeStats, documentPrior, findHits, heuristicResults, heuristicScore, localDocument, overallScore } from './heuristics';
 import { chunkSentences, detectLang, segment } from './segment';
 import { hasKey } from './store';
-import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, Lang, Sentence, SentenceResult, Settings } from './types';
+import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, AssessRequest, AssessResponse, DocumentAssessment, Lang, Sentence, SentenceResult, Settings } from './types';
 
 export type ChunkStatus = 'pending' | 'running' | 'done' | 'failed';
 export interface Progress {
@@ -29,6 +29,7 @@ export function initialAnalysis(
   const results = heuristicResults(sentences);
   const llmOn = hasKey(settings);
   if (llmOn) for (const r of Object.values(results)) r.status = 'pending';
+  const document: DocumentAssessment = { ...localDocument(sentences, results), status: llmOn ? 'pending' : 'local' };
   return {
     id: newId(),
     title: title.trim() || shortTitle(sentences[0]?.text || '') || 'ללא כותרת',
@@ -36,8 +37,9 @@ export function initialAnalysis(
     context,
     sentences,
     results,
-    overall: overallScore(sentences, results),
+    overall: overallScore(sentences, results, undefined, document),
     stats: computeStats(sentences),
+    document,
     meta: {
       provider: llmOn ? settings.provider : undefined,
       model: llmOn ? settings.models[settings.provider] : undefined,
@@ -57,7 +59,14 @@ function shortTitle(t: string): string {
 function contextFor(analysis: Analysis, chunk: Sentence[]): string {
   const firstPara = chunk[0].paragraph;
   const prev = analysis.sentences.filter((s) => s.paragraph === firstPara - 1).map((s) => s.text).join(' ');
-  return [analysis.context && `Author's note on the text: ${analysis.context}`, prev && `Previous paragraph: ${prev.slice(-600)}`]
+  const d = analysis.document;
+  const assessment =
+    d && d.llm !== undefined
+      ? `DOCUMENT ASSESSMENT: whole-document AI probability ${documentPrior(d)}% (language model ${d.llm}%, style index ${d.style}%).` +
+        (d.aiEvidence?.length ? ` AI evidence: ${d.aiEvidence.join('; ')}.` : '') +
+        (d.humanEvidence?.length ? ` Human evidence: ${d.humanEvidence.join('; ')}.` : '')
+      : '';
+  return [assessment, analysis.context && `Author's note on the text: ${analysis.context}`, prev && `Previous paragraph: ${prev.slice(-600)}`]
     .filter(Boolean)
     .join('\n');
 }
@@ -92,11 +101,50 @@ export async function enrich(
   let summary: string | undefined = a.overall.summary;
 
   const emit = () => {
-    const ov = overallScore(a.sentences, a.results, llmOverall.length ? llmOverall.reduce((x, y) => x + y, 0) / llmOverall.length : undefined);
-    a = { ...a, overall: { ...ov, summary } };
+    const ov = overallScore(a.sentences, a.results, llmOverall.length ? llmOverall.reduce((x, y) => x + y, 0) / llmOverall.length : undefined, a.document);
+    a = { ...a, overall: { ...ov, summary: a.document?.summary || summary } };
     onUpdate(a, { chunks: progress.chunks.map((c) => ({ ...c })) });
   };
   emit();
+
+  // 1) Whole-document assessment first: it becomes the prior for every sentence.
+  if (!onlyIds || a.document?.llm === undefined) {
+    const local = localDocument(a.sentences, a.results);
+    a = { ...a, document: { ...(a.document || local), ...local, status: 'pending' } };
+    emit();
+    const body: AssessRequest = {
+      provider: settings.provider,
+      apiKey: settings.keys[settings.provider],
+      model: settings.models[settings.provider],
+      text: documentText(a),
+      features: local.features,
+      explanationLanguage: lang,
+      decisionModel: a.meta.decisionModel,
+      openrouterKey: settings.keys.openrouter,
+    };
+    try {
+      const res = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+      const json = (await res.json()) as AssessResponse;
+      a = {
+        ...a,
+        document: {
+          ...local,
+          llm: json.llm?.ai_probability,
+          decision: json.decision,
+          aiEvidence: json.llm?.ai_evidence,
+          humanEvidence: json.llm?.human_evidence,
+          summary: json.llm?.summary,
+          status: json.llm ? 'done' : 'failed',
+          error: json.errors?.llm,
+        },
+      };
+    } catch (e) {
+      if (signal.aborted) throw e;
+      a = { ...a, document: { ...local, status: 'failed', error: e instanceof Error ? e.message : String(e) } };
+    }
+    emit();
+  }
+  const prior = documentPrior(a.document);
 
   const runChunk = async (i: number) => {
     const chunk = chunks[i];
@@ -151,7 +199,7 @@ export async function enrich(
         patterns: Array.from(new Set([...prev.hits.map((h) => h.patternId), ...((l?.patterns || []) as string[])])),
         status: l || dec !== undefined ? 'done' : 'failed',
       };
-      next.probability = blend(next);
+      next.probability = blend(next, prior);
       results[s.id] = next;
     }
     if (data.llm?.overall) {
@@ -189,7 +237,8 @@ export function applyRewrite(a: Analysis, id: number, text: string): Analysis {
     ...a.results,
     [id]: { ...a.results[id], heuristic: h, hits, patterns: hits.map((x) => x.patternId), llm: undefined, decision: undefined, probability: h, explanation: undefined, rewrite: null, edited: true, status: 'heuristic-only' as const },
   };
-  return { ...a, sentences, results, overall: { ...overallScore(sentences, results), summary: a.overall.summary }, stats: computeStats(sentences) };
+  const document = a.document ? { ...a.document, ...localDocument(sentences, results), status: a.document.status } : undefined;
+  return { ...a, sentences, results, document, overall: { ...overallScore(sentences, results, undefined, document), summary: a.overall.summary }, stats: computeStats(sentences) };
 }
 
 export function documentText(a: Analysis): string {
