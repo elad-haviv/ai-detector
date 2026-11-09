@@ -3,6 +3,8 @@ import type { Analysis, DocStats, DocumentAssessment, PatternHit, Sentence, Sent
 import { countWords } from './segment';
 
 export const HEURISTICS_VERSION = 'h1';
+/** Sentences at or above this probability count as "high" in the overall score and on the score card. */
+export const HIGH_PROBABILITY = 60;
 
 interface Compiled {
   pattern: Pattern;
@@ -138,8 +140,9 @@ export function heuristicResults(sentences: Sentence[]): Record<number, Sentence
  * the sentence-level decision model and lexical rules are weak alone, so they only nudge.
  */
 export function blend(r: Pick<SentenceResult, 'heuristic' | 'llm' | 'decision'>, docPrior?: number, priorWeight = 0.25): number {
-  // Weights from the Hebrew evaluation (eval/README.md): sentence-level AUROC was 0.999 for the
-  // context-aware language model, 0.87 for the decision model and 0.58 for lexical rules.
+  // Weights from the Hebrew evaluation (eval/RESULTS.md, run 2026-11-09T09-46-54): sentence-level
+  // AUROC was 0.999 for the context-aware language model, 0.871 for the decision model and 0.581
+  // for lexical rules. Hand-set from 14 texts, not fitted.
   const parts: [number, number][] = [];
   if (r.llm !== undefined) parts.push([r.llm, 0.8]);
   if (r.decision !== undefined) parts.push([r.decision, 0.1]);
@@ -176,7 +179,8 @@ export function styleFeatures(sentences: Sentence[], results: Record<number, Sen
 }
 
 /**
- * Style index 0-100 (logistic). Hand-set from contrasting human and AI academic texts:
+ * Style index 0-100 (logistic). Hand-set, NOT fitted: on the 14 evaluation texts it classifies
+ * 11/14 at a threshold of 50, so it is a weak signal and gets a low weight. Directions:
  * dense patterns and triads, metronomic sentence length, long sentences and stock connectors push up;
  * citations push down. Unreliable on short texts, so callers weight it by length.
  */
@@ -204,9 +208,9 @@ export function decisionAdjusted(raw: number): number {
 
 /**
  * Pool probabilities in logit space (weighted log-odds sum). Independent signals that agree add up
- * instead of averaging toward 50; disagreeing signals cancel. Weights were chosen on the Hebrew
- * evaluation set (eval/): averaging compressed fully AI texts to 54-83%, pooling gives 70-92%
- * while human texts stay 7-23%.
+ * instead of averaging toward 50; disagreeing signals cancel. Weights are hand-set and were checked
+ * on the Hebrew evaluation set: with plain averaging fully AI texts scored 55-81% (run
+ * 2026-11-09T09-19-34); with pooling 74-93%, human texts 5-29% (eval/RESULTS.md).
  */
 export function poolLogits(parts: [number, number][]): number {
   const logit = (p: number) => {
@@ -270,7 +274,7 @@ export function overallScore(
     const w = Math.max(1, s.words);
     wsum += w;
     acc += r.probability * w;
-    if (r.probability >= 60) flaggedWords += w;
+    if (r.probability >= HIGH_PROBABILITY) flaggedWords += w;
     if (r.llm !== undefined) disagreement += Math.abs(r.llm - (r.decision ?? r.heuristic));
   }
   if (!wsum) return { probability: 0, confidence: 'low', coverage: 0, basis, flaggedShare: 0 };

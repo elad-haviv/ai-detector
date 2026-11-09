@@ -1,5 +1,5 @@
 'use client';
-import { PATTERN_BY_ID } from '@/lib/heuristics';
+import { HIGH_PROBABILITY, PATTERN_BY_ID } from '@/lib/heuristics';
 import { he } from '@/lib/i18n/he';
 import type { PatternCategory } from '@/lib/patterns/catalog';
 import type { Progress } from '@/lib/runAnalysis';
@@ -54,7 +54,7 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
 
       {!local && (
         <p className="mt-2 text-[13px] text-muted">
-          {Math.round((o.flaggedShare ?? 0) * 100)}% מהטקסט שנבדק נמצא במשפטים עם סבירות 60% ומעלה.
+          {Math.round((o.flaggedShare ?? 0) * 100)}% מהטקסט שנבדק נמצא במשפטים עם סבירות {HIGH_PROBABILITY}% ומעלה.
           {partial && ' הציון יתעדכן כשהניתוח יסתיים.'}
         </p>
       )}
