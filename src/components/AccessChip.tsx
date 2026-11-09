@@ -23,12 +23,15 @@ export function AccessChip() {
     <Link
       href={pro ? '/account' : '/settings#access'}
       aria-label={pro ? he.shell.accountChipPro : he.shell.accessChipLabel.replace('{status}', status)}
-      className={`inline-flex min-h-9 max-w-[14rem] items-center gap-1.5 truncate rounded-full border px-3 text-caption font-semibold transition-colors hover:bg-surface-2 ${
+      className={`inline-flex min-h-9 min-w-9 max-w-[14rem] items-center justify-center gap-1.5 truncate rounded-full border px-3 max-[400px]:px-2.5 text-caption font-semibold transition-colors hover:bg-surface-2 ${
         mode ? 'border-success text-success' : 'border-border-strong text-muted'
       }`}
     >
       <IconKey width={16} height={16} className="shrink-0" />
-      <span className="truncate">{status}</span>
+      {/* icon-only below 400px so the header fits 320px (the aria-label still names the status) */}
+      <span className="truncate max-[400px]:sr-only" lang={pro ? 'en' : undefined}>
+        {status}
+      </span>
     </Link>
   );
 }

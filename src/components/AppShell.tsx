@@ -32,8 +32,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {he.shell.skipToContent}
       </a>
       <div className="flex min-h-dvh flex-col">
-        <header className="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4">
+        <header className="unstick-short sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur">
+          <div className="mx-auto flex min-h-14 max-w-[1440px] items-center gap-3 px-4 max-[400px]:gap-2 max-[400px]:px-3">
             <Link href="/" className="flex min-h-11 items-center gap-2 rounded-md" aria-label={he.nav.home}>
               <span aria-hidden className="font-doc text-2xl font-bold text-accent">
                 {he.appName}
@@ -65,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* ── Header status slot ────────────────────────────────────────────
                 M2/M3 fill this: access chip (Pro / your key / local rules) and the account button.
                 Keep both inside this div so layout stays stable. */}
-            <div data-slot="header-status" className="ms-auto flex items-center gap-2 md:ms-2">
+            <div data-slot="header-status" className="ms-auto flex min-w-0 items-center gap-2 md:ms-2">
               <AccessChip />
               <div data-slot="account-button">
                 <AccountButton />
@@ -81,14 +81,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Footer />
         <CookieConsent />
 
-        <nav className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface md:hidden" aria-label={he.nav.main} data-tabbar>
+        <nav className="unstick-short pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface md:hidden" aria-label={he.nav.main} data-tabbar>
           <ul className="flex">
             {NAV.map(({ href, label, Icon }) => (
               <li key={href} className="flex-1">
                 <Link
                   href={href}
                   aria-current={active(href) ? 'page' : undefined}
-                  className={`focus-ring-inset flex h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${active(href) ? 'text-accent' : 'text-muted'}`}
+                  className={`focus-ring-inset flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${active(href) ? 'text-accent' : 'text-muted'}`}
                 >
                   <span className={`grid h-7 w-12 place-items-center rounded-full ${active(href) ? 'bg-accent-soft' : ''}`}>
                     <Icon />
@@ -108,7 +108,7 @@ function Footer() {
   const router = useRouter();
   const link = 'inline-flex min-h-11 items-center rounded-md px-1 text-muted underline-offset-4 hover:text-text hover:underline';
   return (
-    <footer className="border-t border-border pb-20 md:pb-0">
+    <footer className="tabbar-pad border-t border-border">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-1 px-4 py-3 text-caption">
         <nav aria-label={he.shell.footerNav}>
           <ul className="flex flex-wrap gap-x-4">

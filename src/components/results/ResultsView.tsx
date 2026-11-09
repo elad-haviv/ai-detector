@@ -11,7 +11,7 @@ import type { Analysis, SentenceResult } from '@/lib/types';
 import { getFile } from '@/lib/blobStore';
 import { buildEditedDocx } from '@/lib/docx/model';
 import { IconChevron, IconDownload, IconFilter, IconRefresh, IconX } from '../icons';
-import { Button, Dialog } from '../ui';
+import { Button, Dialog, useToast } from '../ui';
 import { DocxView, type Decor } from './DocxView';
 import { Inspector } from './Inspector';
 import { CATEGORIES, Filters, ProgressList, ScoreCard, Stats, TopPatterns } from './SummaryPanel';
@@ -37,6 +37,12 @@ export function ResultsView(props: Props) {
   const [enabled, setEnabled] = useState<Set<PatternCategory>>(new Set(CATEGORIES));
   const [patternFilter, setPatternFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+  // Last selected sentence: keeps the document's roving tab stop (and Esc's focus target) after closing.
+  const [lastSelected, setLastSelected] = useState<number | null>(null);
+  const toast = useToast();
+  /** Where to put focus once the new selection has rendered (see `select`). */
+  const pendingFocus = useRef<string | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const [sheetFull, setSheetFull] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [paraRewrite, setParaRewrite] = useState<{ paragraph: number; loading: boolean; text?: string; changes?: string[]; error?: string } | null>(null);
@@ -71,11 +77,20 @@ export function ResultsView(props: Props) {
           .filter(Boolean)
           .join(' '),
         badge: r?.edited ? { text: '✎ נערך', cls: '!border !border-accent !text-accent' } : showBadge ? { text: `${r.probability}%`, cls: `b${band}` } : undefined,
-        label: band ? `משפט חשוד, ${r.probability}%, ${BAND_LABEL[band]}` : undefined,
+        label: band ? he.results.sentenceLabelDocx.replace('{band}', BAND_LABEL[band]).replace('{percent}', String(r.probability)) : undefined,
       };
     },
     [analysis.results, visible, threshold, settings.alwaysShowPercent],
   );
+
+  // A descriptive tab title while a result is open (restored when leaving the results view).
+  useEffect(() => {
+    const before = document.title;
+    document.title = he.results.pageTitle.replace('{title}', analysis.title);
+    return () => {
+      document.title = before;
+    };
+  }, [analysis.title]);
 
   async function downloadDocx() {
     setDownloading(true);
@@ -96,31 +111,61 @@ export function ResultsView(props: Props) {
     }
   }
 
-  const select = useCallback((id: number | null) => {
+  /**
+   * Select a sentence. Focus rules (keyboard users never lose their place):
+   * - from the document or the j/k keys: focus the sentence (desktop) / move into the details sheet (mobile);
+   * - from the toolbar's prev/next: focus stays on that button (desktop) / moves into the sheet (mobile);
+   * - from the inspector's own prev/next: focus returns to the same button after it re-renders.
+   */
+  const select = useCallback((id: number | null, source: 'doc' | 'toolbar' | 'next' | 'prev' = 'doc') => {
     setSelected(id);
-    if (id !== null) {
-      const el = document.getElementById(`s-${id}`);
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      el?.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
-      el?.focus({ preventScroll: true });
-    }
+    if (id === null) return;
+    setLastSelected(id);
+    const el = document.getElementById(`s-${id}`);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el?.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    const mobile = window.matchMedia('(max-width: 1023.98px)').matches;
+    if (source === 'next' || source === 'prev') pendingFocus.current = `[data-nav="${source}"]`;
+    else if (mobile) pendingFocus.current = 'sheet';
+    else if (source === 'doc') el?.focus({ preventScroll: true });
+  }, []);
+
+  // Apply the focus request from `select` once the inspector/sheet for the new sentence exists.
+  useEffect(() => {
+    const want = pendingFocus.current;
+    if (!want || selected === null) return;
+    pendingFocus.current = null;
+    const mobile = window.matchMedia('(max-width: 1023.98px)').matches;
+    const scope = mobile ? sheetRef.current : document.querySelector<HTMLElement>('[data-inspector="desktop"]');
+    const target = want === 'sheet' ? sheetRef.current : scope?.querySelector<HTMLElement>(want);
+    target?.focus({ preventScroll: true });
+  }, [selected]);
+
+  /** Close the details (Esc, close button, backdrop) and return focus to the sentence. */
+  const closeDetails = useCallback(() => {
+    setSelected((id) => {
+      if (id !== null) requestAnimationFrame(() => document.getElementById(`s-${id}`)?.focus({ preventScroll: true }));
+      return null;
+    });
   }, []);
 
   const step = useCallback(
-    (dir: 1 | -1) => {
+    (dir: 1 | -1, source: 'doc' | 'toolbar' | 'next' | 'prev' = 'doc') => {
       if (!flaggedIds.length) return;
       const order = analysis.sentences.map((s) => s.id);
-      const curPos = selected === null ? -1 : order.indexOf(selected);
+      // continue from the last selected sentence even after the details were closed
+      const from = selected ?? lastSelected;
+      const curPos = from === null ? -1 : order.indexOf(from);
       const candidates = dir === 1 ? flaggedIds.filter((id) => order.indexOf(id) > curPos) : flaggedIds.filter((id) => order.indexOf(id) < curPos).reverse();
-      select(candidates[0] ?? (dir === 1 ? flaggedIds[0] : flaggedIds[flaggedIds.length - 1]));
+      select(candidates[0] ?? (dir === 1 ? flaggedIds[0] : flaggedIds[flaggedIds.length - 1]), source);
     },
-    [flaggedIds, selected, analysis.sentences, select],
+    [flaggedIds, selected, lastSelected, analysis.sentences, select],
   );
 
   const current = selected !== null ? analysis.sentences.find((s) => s.id === selected) : undefined;
   const currentResult = selected !== null ? analysis.results[selected] : undefined;
   // Roving tab stop in the document: the selected sentence, else the first suspicious one, else the first.
-  const tabStop = selected ?? flaggedIds[0] ?? analysis.sentences[0]?.id;
+  const tabStop = selected ?? (lastSelected !== null && analysis.results[lastSelected] ? lastSelected : undefined) ?? flaggedIds[0] ?? analysis.sentences[0]?.id;
   const position = selected !== null ? flaggedIds.indexOf(selected) : -1;
   const announcement =
     current && currentResult && position >= 0
@@ -162,7 +207,7 @@ export function ResultsView(props: Props) {
       const t = e.target as HTMLElement;
       if (e.key === 'Escape') {
         if (document.querySelector('dialog[open]')) return; // the dialog handles its own Esc
-        setSelected(null);
+        if (selected !== null) closeDetails();
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -182,29 +227,37 @@ export function ResultsView(props: Props) {
           else n.add(c);
           return n;
         });
-      } else if (e.key === 'a' && currentResult?.rewrite && selected !== null) props.onApply(selected, currentResult.rewrite);
-      else if (e.key === 'c' && currentResult?.rewrite) navigator.clipboard?.writeText(currentResult.rewrite);
+      } else if (e.key === 'a' && currentResult?.rewrite && selected !== null) {
+        props.onApply(selected, currentResult.rewrite);
+        toast(he.inspector.appliedToast, { tone: 'success' });
+      }
+      else if (e.key === 'c' && currentResult?.rewrite)
+        navigator.clipboard?.writeText(currentResult.rewrite).then(
+          () => toast(he.inspector.copiedToast, { tone: 'success' }),
+          () => toast(he.inspector.copyFailed, { tone: 'danger' }),
+        );
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [step, currentResult, selected, props]);
+  }, [step, currentResult, selected, props, closeDetails, toast]);
 
   const llmPending = running && !!progress;
   const failedChunks = progress?.chunks.filter((c) => c.status === 'failed') || [];
   const firstErr = failedChunks.find((c) => c.error)?.error;
 
-  const inspector =
+  const inspector = (headingId: string) =>
     current && currentResult ? (
       <Inspector
+        headingId={headingId}
         key={current.id}
         sentence={current}
         result={currentResult}
         threshold={threshold}
         index={flaggedIds.indexOf(current.id)}
         total={flaggedIds.length}
-        onPrev={() => step(-1)}
-        onNext={() => step(1)}
-        onClose={() => setSelected(null)}
+        onPrev={() => step(-1, 'prev')}
+        onNext={() => step(1, 'next')}
+        onClose={closeDetails}
         onApply={(t) => props.onApply(current.id, t)}
         onIgnore={() => props.onToggleIgnore(current.id)}
         onRewriteParagraph={() => rewriteParagraph(current.paragraph)}
@@ -241,7 +294,7 @@ export function ResultsView(props: Props) {
           <IconX width={16} />
         </button>
       )}
-      <TopPatterns analysis={analysis} onPick={(id) => setPatternFilter((p) => (p === id ? null : id))} />
+      <TopPatterns analysis={analysis} active={patternFilter} onPick={(id) => setPatternFilter((p) => (p === id ? null : id))} />
       <Stats analysis={analysis} />
     </>
   );
@@ -249,7 +302,7 @@ export function ResultsView(props: Props) {
   return (
     <div className="mx-auto max-w-[1440px]">
       {/* Mobile / tablet sticky score bar */}
-      <div className="sticky top-14 z-20 flex h-14 items-center gap-3 border-b border-border bg-bg/95 px-4 py-1.5 backdrop-blur lg:hidden">
+      <div className="unstick-short sticky top-14 z-20 flex min-h-14 items-center gap-3 border-b border-border bg-bg/95 px-4 py-1.5 backdrop-blur lg:hidden">
         <ScoreRing value={analysis.overall.probability} size={36} stroke={4} />
         <div className="min-w-0 text-sm leading-tight">
           <div className="font-bold">
@@ -300,13 +353,13 @@ export function ResultsView(props: Props) {
             </div>
 
             {/* Always-visible legend + keyboard-friendly navigation between suspicious sentences */}
-            <div className="sticky top-28 z-10 -mx-1 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface/95 px-3 py-2 backdrop-blur lg:top-16">
+            <div className="unstick-short sticky top-28 z-10 -mx-1 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface/95 px-3 py-2 backdrop-blur lg:top-16">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-muted">{he.results.legendTitle}:</span>
                 <BandLegend />
               </div>
               <div role="group" aria-label={he.results.sentenceNav} className="ms-auto flex items-center gap-1">
-                <Button size="sm" variant="ghost" onClick={() => step(-1)} disabled={!flaggedIds.length} title={`${he.results.prevSuspicious} (k)`} icon={<IconChevron dir="prev" width={18} height={18} />}>
+                <Button size="sm" variant="ghost" onClick={() => step(-1, 'toolbar')} disabled={!flaggedIds.length} title={`${he.results.prevSuspicious} (k)`} icon={<IconChevron dir="prev" width={18} height={18} />}>
                   <span className="sr-only sm:not-sr-only">{he.results.prevSuspicious}</span>
                 </Button>
                 <span className="min-w-16 text-center text-caption tabular-nums text-muted">
@@ -314,7 +367,7 @@ export function ResultsView(props: Props) {
                     ? he.results.position.replace('{index}', String(position + 1)).replace('{total}', String(flaggedIds.length))
                     : he.results.noneSelected.replace('{total}', String(flaggedIds.length))}
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => step(1)} disabled={!flaggedIds.length} title={`${he.results.nextSuspicious} (j)`}>
+                <Button size="sm" variant="ghost" onClick={() => step(1, 'toolbar')} disabled={!flaggedIds.length} title={`${he.results.nextSuspicious} (j)`}>
                   <span className="sr-only sm:not-sr-only">{he.results.nextSuspicious}</span>
                   <IconChevron dir="next" width={18} height={18} />
                 </Button>
@@ -338,8 +391,8 @@ export function ResultsView(props: Props) {
                 </button>
                 {firstErr && (
                   <details className="mt-1 text-xs text-muted">
-                    <summary>פרטים מהספק</summary>
-                    <code dir="ltr" className="block break-all">{firstErr}</code>
+                    <summary className="flex min-h-9 cursor-pointer items-center">פרטים מהספק</summary>
+                    <code dir="ltr" lang="en" className="block break-all">{firstErr}</code>
                   </details>
                 )}
               </div>
@@ -382,7 +435,6 @@ export function ResultsView(props: Props) {
                           role="button"
                           tabIndex={tabStop === s.id ? 0 : -1}
                           aria-current={selected === s.id ? 'true' : undefined}
-                          aria-label={band ? `משפט חשוד, ${r.probability}%, ${BAND_LABEL[band]}` : undefined}
                           className={cls}
                           onClick={() => {
                             select(s.id);
@@ -396,7 +448,17 @@ export function ResultsView(props: Props) {
                           }}
                         >
                           {s.text}
-                          {r?.edited && <span className="badge !border !border-accent !text-accent">✎ נערך</span>}
+                          {band > 0 && (
+                            <span className="sr-only">
+                              {(showBadge ? he.results.sentenceSuffix : he.results.sentenceSuffixPercent).replace('{band}', BAND_LABEL[band]).replace('{percent}', String(r.probability))}
+                            </span>
+                          )}
+                          {r?.edited && (
+                            <span className="badge !border !border-accent !text-accent">
+                              <span aria-hidden>✎ </span>
+                              {he.results.edited}
+                            </span>
+                          )}
                           {showBadge && <span className={`badge b${band}`}>{r.probability}%</span>}
                         </span>{' '}
                       </span>
@@ -410,7 +472,7 @@ export function ResultsView(props: Props) {
             <p className="mt-6 text-xs text-muted">
               {he.disclaimer.body}
               {analysis.meta.model && (
-                <span dir="ltr" className="ms-1 font-mono">
+                <span dir="ltr" lang="en" className="ms-1 font-mono">
                   [{analysis.meta.model}
                   {analysis.meta.decisionModel ? ` + ${analysis.meta.decisionModel}` : ''} · {analysis.meta.heuristicsVersion}]
                 </span>
@@ -419,24 +481,35 @@ export function ResultsView(props: Props) {
           </div>
         </section>
 
-        <aside aria-label={he.inspector.title} className="hidden lg:block">
-          <div className="card sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto p-4">{inspector}</div>
+        <aside aria-label={he.inspector.title} className="hidden lg:block" data-inspector="desktop">
+          <div className="card sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto p-4">{inspector('insp-desktop-title')}</div>
         </aside>
       </div>
 
       {/* Mobile/tablet bottom sheet for sentence details */}
+      {/* Non-modal on purpose: the document stays usable (tap another sentence, j/k). Focus moves into
+          the sheet when it opens, Esc or the close button returns it to the sentence. */}
       {current && (
         <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
-          <div className="absolute inset-0 -top-[100dvh] bg-black/20" onClick={() => setSelected(null)} aria-hidden />
+          <div className="absolute inset-0 -top-[100dvh] bg-black/20" onClick={closeDetails} aria-hidden />
           <div
-            className={`sheet-up pb-safe relative overflow-y-auto rounded-t-2xl border-t border-border bg-surface px-4 pb-6 shadow-2xl ${sheetFull ? 'h-[90dvh]' : 'max-h-[55dvh]'}`}
-            role="region"
-            aria-label={he.inspector.title}
+            ref={sheetRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="insp-sheet-title"
+            className={`sheet-up pb-safe relative overflow-y-auto rounded-t-2xl border-t border-border bg-surface px-4 pb-6 shadow-2xl focus:outline-none ${sheetFull ? 'h-[90dvh]' : 'max-h-[55dvh]'}`}
           >
-            <button type="button" onClick={() => setSheetFull((v) => !v)} aria-expanded={sheetFull} className="sticky top-0 z-10 flex w-full justify-center bg-surface py-3" aria-label="הרחבה">
-              <span className="h-1.5 w-10 rounded-full bg-border" />
+            <button
+              type="button"
+              onClick={() => setSheetFull((v) => !v)}
+              aria-expanded={sheetFull}
+              className="focus-ring-inset sticky top-0 z-10 flex min-h-11 w-full items-center justify-center bg-surface"
+              aria-label={he.results.sheetExpand}
+            >
+              <span aria-hidden className="h-1.5 w-10 rounded-full bg-border-strong" />
             </button>
-            {inspector}
+            {inspector('insp-sheet-title')}
           </div>
         </div>
       )}
@@ -455,13 +528,23 @@ export function ResultsView(props: Props) {
         footer={
           paraRewrite?.text ? (
             <>
-              <Button onClick={() => navigator.clipboard?.writeText(paraRewrite.text!)}>{he.inspector.copy}</Button>
+              <Button
+                onClick={() =>
+                  navigator.clipboard?.writeText(paraRewrite.text!).then(
+                    () => toast(he.inspector.copiedToast, { tone: 'success' }),
+                    () => toast(he.inspector.copyFailed, { tone: 'danger' }),
+                  )
+                }
+              >
+                {he.inspector.copy}
+              </Button>
               <Button
                 variant="primary"
                 onClick={() => {
                   props.onReplaceParagraph(paraRewrite.paragraph, paraRewrite.text!);
                   setParaRewrite(null);
                   setSelected(null);
+                  toast(he.inspector.appliedToast, { tone: 'success' });
                 }}
               >
                 {he.inspector.apply}

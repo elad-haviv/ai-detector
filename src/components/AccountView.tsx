@@ -97,7 +97,7 @@ export function AccountView() {
 
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-t border-border pt-4 text-sm">
             <dt className="font-semibold text-muted">{he.account.plan}</dt>
-            <dd className={account.plan === 'pro' ? 'font-bold text-success' : ''} data-testid="account-plan">
+            <dd className={account.plan === 'pro' ? 'font-bold text-success' : ''} lang={account.plan === 'pro' ? 'en' : undefined} data-testid="account-plan">
               {account.plan === 'pro' ? he.account.planPro : he.account.planFree}
             </dd>
             {account.subscription && (

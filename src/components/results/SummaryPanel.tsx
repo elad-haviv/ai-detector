@@ -72,7 +72,7 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
           {analysis.document.decision !== undefined && <SignalRow label="מודל החלטה" value={analysis.document.decision} />}
           {(!!analysis.document.aiEvidence?.length || !!analysis.document.humanEvidence?.length) && (
             <details className="pt-1 text-xs">
-              <summary className="cursor-pointer font-semibold text-muted">ראיות</summary>
+              <summary className="flex min-h-9 cursor-pointer items-center font-semibold text-muted">ראיות</summary>
               {!!analysis.document.aiEvidence?.length && (
                 <>
                   <div className="mt-1 font-semibold">מצביע על AI</div>
@@ -92,7 +92,7 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
       {dirty && <p className="mt-2 text-caption font-semibold text-warning">בוצעו שינויים. כדאי להריץ ניתוח מחדש.</p>}
 
       <details className="mt-3 text-xs text-muted">
-        <summary className="cursor-pointer font-semibold">מה המספר אומר?</summary>
+        <summary className="flex min-h-9 cursor-pointer items-center font-semibold">מה המספר אומר?</summary>
         <p className="mt-1 leading-relaxed">
           זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. כתיבת AI מודרנית ניכרת בעיקר ברמת המסמך: משפטים ארוכים
           ומאוזנים באופן אחיד, רשימות של שלושה שחוזרות, מחברים חלקים, היעדר הפניות ופרטים אישיים. לכן הציון נשען קודם כול על שיפוט המסמך
@@ -131,7 +131,7 @@ export function Filters({
           <span>{he.threshold.label}</span>
           <span className="tabular-nums">{threshold}%</span>
         </label>
-        <input id="thr" type="range" min={0} max={95} step={5} value={threshold} onChange={(e) => setThreshold(+e.target.value)} className="mt-1 w-full" />
+        <input id="thr" type="range" min={0} max={95} step={5} value={threshold} onChange={(e) => setThreshold(+e.target.value)} className="mt-1 h-6 w-full" />
         <p className="text-xs text-muted">
           {he.results.sentencesFlagged.replace('{flagged}', String(flaggedCount)).replace('{total}', String(analysis.sentences.length))}
         </p>
@@ -141,12 +141,13 @@ export function Filters({
         <div className="flex flex-wrap gap-1.5">
           {CATEGORIES.map((c, i) => (
             <button
+              type="button"
               key={c}
               onClick={() => toggle(c)}
               aria-pressed={enabled.has(c)}
               title={`${i + 1}`}
               className={`min-h-8 rounded-full border px-3 text-caption font-semibold ${
-                enabled.has(c) ? 'border-accent bg-accent/10 text-text' : 'border-border text-muted line-through'
+                enabled.has(c) ? 'border-accent bg-accent/10 text-text' : 'border-border-strong text-muted line-through'
               }`}
             >
               {he.categories[c]} <span className="tabular-nums text-muted">{counts[c] || 0}</span>
@@ -158,7 +159,7 @@ export function Filters({
   );
 }
 
-export function TopPatterns({ analysis, onPick }: { analysis: Analysis; onPick: (patternId: string) => void }) {
+export function TopPatterns({ analysis, onPick, active }: { analysis: Analysis; onPick: (patternId: string) => void; active?: string | null }) {
   const counts = new Map<string, number>();
   for (const r of Object.values(analysis.results)) for (const id of r.patterns) counts.set(id, (counts.get(id) || 0) + 1);
   const top = [...counts.entries()].filter(([id]) => PATTERN_BY_ID[id]).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -169,9 +170,12 @@ export function TopPatterns({ analysis, onPick }: { analysis: Analysis; onPick: 
       <ul className="space-y-1">
         {top.map(([id, n]) => (
           <li key={id}>
-            <button onClick={() => onPick(id)} className="flex w-full items-center justify-between rounded px-1 py-1 text-start text-sm hover:bg-surface-2">
+            <button onClick={() => onPick(id)} type="button" aria-pressed={active === id} className={`flex min-h-9 w-full items-center justify-between rounded px-1 text-start text-sm hover:bg-surface-2 ${active === id ? 'bg-accent-soft font-semibold' : ''}`}>
               <span>{PATTERN_BY_ID[id].nameHe}</span>
-              <span className="tabular-nums text-muted">×{n}</span>
+              <span className="tabular-nums text-muted">
+                <span aria-hidden>×{n}</span>
+                <span className="sr-only">{he.filters.occurrences.replace('{count}', String(n))}</span>
+              </span>
             </button>
           </li>
         ))}
@@ -196,13 +200,15 @@ export function Stats({ analysis }: { analysis: Analysis }) {
       <div className="mb-2 text-caption font-semibold">{he.stats.title}</div>
       <dl className="grid grid-cols-1 gap-3">
         {tiles.map((t) => (
-          <div key={t.label} title={t.hint}>
+          <div key={t.label}>
             <dt className="text-xs text-muted">{t.label}</dt>
-            <dd className="flex items-baseline gap-2">
-              <span className="text-lg font-bold tabular-nums">{t.value}</span>
-              <span className="text-xs text-muted">{t.note}</span>
+            <dd>
+              <span className="flex items-baseline gap-2">
+                <span className="text-lg font-bold tabular-nums">{t.value}</span>
+                <span className="text-xs text-muted">{t.note}</span>
+              </span>
+              {t.hint && <span className="block text-micro leading-snug text-muted">{t.hint}</span>}
             </dd>
-            {t.hint && <p className="text-micro leading-snug text-muted">{t.hint}</p>}
           </div>
         ))}
       </dl>

@@ -15,7 +15,7 @@ UI language: Hebrew, `<html lang="he" dir="rtl">`. Analyzed text: every paragrap
 /pricing       Free (BYOK) vs Pro cards, monthly/yearly toggle, Paddle overlay checkout, FAQ
 /account       Google sign-in / plan status, renew date, manage billing (Paddle portal), refresh, sign out
 /privacy /terms   Hebrew legal pages (LegalPage, anchored sections, cookie table; stacked cards <640px)
-/accessibility  stub until M4
+/accessibility  Accessibility statement (הצהרת נגישות, LegalPage + `accessibilityDoc` in legal.he.ts)
 ```
 
 **AppShell** (`src/components/AppShell.tsx`): skip link "דילוג לתוכן הראשי" → `<main id="main">`; `<header>` with logo, desktop `<nav aria-label="ניווט ראשי">` (`aria-current="page"` on the active link), and the **header status slot** (`data-slot="header-status"`): the access chip (`AccessChip`: "המפתח שלך · <provider>" when the chosen provider has a key in the browser key store, "Pro" for a subscriber, else "כללים מקומיים בלבד"; links to `/settings#access`) and the account button (`AccountButton`: avatar initial → /account, or "התחברות"). The chip follows `llmMode()`: BYOK key wins, then Pro, then local. `<footer>` with privacy · terms · accessibility statement links and a "הגדרות עוגיות" button that dispatches `kulmus:open-cookie-settings` (`CookieConsent` calls `preventDefault()` and opens its Dialog; the first-visit banner is a non-modal bottom `role=region` above the mobile tab bar, and the page gets matching bottom padding). Mobile (<768px): bottom tab bar with the same three entries; the footer pads for it. The workspace has three states: **Input → Analyzing → Results (editable)**.
@@ -56,7 +56,7 @@ Use a single-hue sequential **amber → burnt-sienna** scale. Luminance carries 
 - Text on every background ≥ 4.5:1 (verify in both themes). Highlights tint the background only and never change text colour.
 - Selected sentence: 2px `--focus` outline ring with 2px offset + `aria-current="true"`.
 - Rewritten (applied) sentence: green-free marker. Use a thin `--accent` start-border + "✎ נערך" chip until re-analysis.
-- Each sentence span: `role="button" tabindex="-1" aria-label="משפט חשוד, 73%, סביר"`.
+- Each sentence span: `role="button"`, roving `tabindex`; its accessible name is its own text plus a visually hidden suffix "(משפט חשוד, סביר, 73%)" (no `aria-label`, so the visible text stays in the name, WCAG 2.5.3). In the Word view a sentence can span several runs, so the first run gets `aria-label` = whole sentence + suffix.
 - Legend under the score card shows all three bands with their underline samples.
 
 ## 4. Typography
@@ -96,7 +96,9 @@ All tokens live in `src/app/globals.css` (`:root` light, `.dark` dark) and are e
 | `--shadow-lg` | soft | deep | dialogs, toasts |
 | `--radius-control/card/sheet` | 6 / 10 / 16px | | |
 
-Checked contrast: all text tokens ≥4.5:1 on `--bg`, `--surface`, `--surface-2` in both themes; `--focus` (#3B6FD8 / #8FB0E6) and `--border-strong` ≥3:1.
+Highlight underlines: `--hl-1-line` #A3741A, `--hl-2-line` #A05F12 in light (≥3:1 on their band and the page). Ignored sentences use `--text-muted`, never opacity.
+
+Checked contrast: all text tokens ≥4.5:1 on `--bg`, `--surface`, `--surface-2` in both themes; `--focus` (#2D5FC4 / #8FB0E6; ≥3:1 also on every highlight band) and `--border-strong` ≥3:1.
 
 **Type scale** is rem-based so the text-size setting scales everything: `text-micro` 11, `text-xs` 12, `text-caption` 13, `text-sm` 14, `text-ui` 15 (body), `text-base` 16, `text-h2` 17, `text-lg` 18, `text-title` 22. Never use `text-[Npx]`.
 
@@ -169,3 +171,20 @@ Shortcuts are disabled while focus is in an input or contenteditable (except Esc
 - **Usage meter**: words/analyses this month, shown in the header avatar menu + settings, with a soft warning at 80%.
 - **Pricing page** (`/pricing`): 3 tiers, Hebrew + English, ILS/USD.
 - Add: billing settings, team/shared docs, export report (PDF/DOCX with highlights), onboarding tour. Keep the token system unchanged so these slot in.
+
+## 13. Accessibility conformance (SI 5568 / WCAG 2.1 AA)
+
+Israeli law (Service Accessibility Adjustments Regulations 2013, reg. 35) requires ת״י 5568 level AA (WCAG 2.0 AA); we test against WCAG 2.1 AA. No overlay or toolbar widgets: accessibility lives in the components. The statement is `/accessibility`; update its dates and the coordinator's details whenever they change.
+
+**Automated audit.** `npm run a11y` (`scripts/a11y.mjs`, `@axe-core/playwright`) audits an already running app at `A11Y_BASE_URL` (default `http://localhost:3000`): every route plus results with a selected sentence, the mobile summary dialog, consent banner, cookie-settings dialog, history with items and its delete confirm, settings with a provider selected and with a key error, account signed out (and signed in when `A11Y_SESSION_TOKEN` holds a signed `kulmus_session`). Light and dark × 1280px and 320px, tags `wcag2a wcag2aa wcag21a wcag21aa`, plus a no-horizontal-scroll check at 320px. Exit 1 on any violation; `A11Y_ONLY=<state>` narrows the run, `A11Y_JSON=<file>` saves the report. It must stay at zero violations.
+
+**Manual checklist** (axe cannot see these; re-check when a screen changes):
+- Keyboard: Tab order follows the visual RTL order; no traps; Esc closes every dialog/sheet and focus returns to the opener (the mobile sentence sheet returns it to the sentence; prev/next inside the inspector keep focus on that button). After deleting a history item focus goes to the next item, else the heading, and a toast announces it.
+- Visible focus: 2px `--focus` ring everywhere, including sentences, cards' links, `summary`, banner buttons and the sheet itself.
+- Reflow: no horizontal scroll at 320px, at 640px (200% zoom) and at 320×256 (400% zoom: sticky bars become static below 30rem height via `.unstick-short`). Text-size "larger" and the WCAG 1.4.12 text-spacing override clip nothing.
+- Contrast: text ≥4.5:1, focus ring, control borders, highlight underlines ≥3:1 in both themes (see §6). No information is conveyed by opacity or colour alone.
+- Status messages go through the toast `role=status` region or a local `aria-live` region (analysis progress, selected sentence, test connection, copy/apply/ignore, delete); form errors use `Field`'s `error` (aria-invalid + aria-describedby), including the API-key field after a failed test.
+- Language: `lang="en"` on English-only fragments (provider and plan names, model ids, provider error text); `dir="auto"` on user text. Every route has a unique Hebrew `<title>`; the results view sets one with the document title.
+- One `h1` per page, no skipped heading levels, landmarks labelled.
+- Targets ≥24×24px (most 44×44); `prefers-reduced-motion` disables animation and smooth scroll; nothing flashes.
+- Not automatable: real screen-reader passes (NVDA + Firefox/Chrome on Windows, VoiceOver on macOS/iOS), Windows high-contrast mode, and speech input. Record the results in the statement.

@@ -94,7 +94,7 @@ export function Checkbox({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="mt-0.5 size-5 shrink-0 accent-[var(--accent)]"
+        className="size-6 shrink-0 accent-[var(--accent)]"
       />
       <div>
         <label htmlFor={id} className="font-semibold">

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { he } from '@/lib/i18n/he';
 import { useHistory } from '@/lib/store';
 import type { Analysis } from '@/lib/types';
@@ -17,11 +17,26 @@ export default function HistoryPage() {
   const query = q.trim();
   const shown = items.filter((a) => !query || a.title.includes(query) || a.sentences.some((s) => s.text.includes(query)));
   const fmt = (n: number) => n.toLocaleString('he-IL');
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // After a delete, focus the next item (or the previous one, or the heading when the list is empty).
+  const focusAfter = useRef<string | null>(null);
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (!target) return;
+    focusAfter.current = null;
+    // next frame: after the confirm dialog has closed and tried to restore focus to the removed button
+    requestAnimationFrame(() => {
+      const el = target === 'heading' ? headingRef.current : document.querySelector<HTMLElement>(`[data-history-link="${CSS.escape(target)}"]`);
+      (el || headingRef.current)?.focus();
+    });
+  }, [items]);
 
   return (
     <div className="mx-auto max-w-[800px] px-4 py-6 md:py-10">
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <h1 className="text-title font-bold">{he.history.title}</h1>
+        <h1 ref={headingRef} tabIndex={-1} className="text-title font-bold">
+          {he.history.title}
+        </h1>
         {items.length > 0 && (
           <Button variant="ghost" size="sm" icon={<IconTrash width={16} height={16} />} onClick={() => setConfirmClear(true)} className="ms-auto text-danger">
             {he.history.clearAll}
@@ -58,7 +73,7 @@ export default function HistoryPage() {
             {shown.map((a) => (
               <li key={a.id} className="card flex items-center gap-3 p-2 ps-3 transition-colors hover:border-border-strong">
                 <ScoreRing value={a.overall.probability} size={44} stroke={4} />
-                <Link href={`/?id=${a.id}`} className="min-w-0 flex-1 rounded-md py-1">
+                <Link href={`/?id=${a.id}`} data-history-link={a.id} className="min-w-0 flex-1 rounded-md py-1">
                   <div dir="auto" className="truncate font-bold">
                     {a.title}
                   </div>
@@ -101,9 +116,13 @@ export default function HistoryPage() {
         danger
         onCancel={() => setToDelete(null)}
         onConfirm={() => {
-          if (toDelete) remove(toDelete.id);
+          if (toDelete) {
+            const i = shown.findIndex((a) => a.id === toDelete.id);
+            focusAfter.current = (shown[i + 1] || shown[i - 1])?.id ?? 'heading';
+            remove(toDelete.id);
+            toast(he.history.deleted.replace('{title}', toDelete.title), { tone: 'success' });
+          }
           setToDelete(null);
-          toast(he.history.deleted, { tone: 'success' });
         }}
       />
       <ConfirmDialog
@@ -114,6 +133,7 @@ export default function HistoryPage() {
         danger
         onCancel={() => setConfirmClear(false)}
         onConfirm={() => {
+          focusAfter.current = 'heading';
           clear();
           setConfirmClear(false);
           toast(he.history.cleared, { tone: 'success' });

@@ -38,7 +38,7 @@ function inline(text: string): ReactNode[] {
   return out;
 }
 
-/** A long-form legal document (privacy, terms) with a table of contents and anchored sections. */
+/** A long-form legal document (privacy, terms, accessibility statement) with a table of contents and anchored sections. */
 export function LegalPage({ doc }: { doc: LegalDoc }) {
   return (
     <article
@@ -48,7 +48,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
       <h1 id="legal-title" className="text-title font-bold">
         {doc.title}
       </h1>
-      <p className="mt-1 text-caption text-muted">{he.legal.updated}</p>
+      <p className="mt-1 text-caption text-muted">{doc.updated ?? he.legal.updated}</p>
       <p className="mt-4 leading-relaxed">{doc.intro}</p>
 
       <nav aria-labelledby="toc-title" className="card mt-5 p-4">
@@ -104,6 +104,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
                     >
                       <p
                         dir="ltr"
+                        lang="en"
                         className="text-start font-mono text-xs font-bold"
                       >
                         {r[0]}
@@ -155,6 +156,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
                                 scope="row"
                                 className="px-3 py-2 text-start font-mono text-xs font-normal"
                                 dir="ltr"
+                                lang="en"
                               >
                                 {c}
                               </th>

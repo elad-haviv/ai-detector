@@ -40,7 +40,7 @@ export function KeyField({ provider, field }: { provider: ProviderId; field: Fie
         placeholder={he.settings.apiKeyPlaceholder}
         className="min-w-0 flex-1 font-mono text-sm"
       />
-      <Button onClick={() => setShow((v) => !v)} aria-pressed={show} aria-controls={field.id}>
+      <Button onClick={() => setShow((v) => !v)} aria-controls={field.id}>
         {show ? he.settings.hideKey : he.settings.showKey}
       </Button>
     </div>
@@ -96,7 +96,7 @@ function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: {
             {catalog.length > 0 && (
               <optgroup label={he.settings.modelAllOpenRouter}>
                 {catalog.map((m) => (
-                  <option key={m.id} value={m.id}>
+                  <option key={m.id} value={m.id} lang="en">
                     {m.id}
                   </option>
                 ))}
@@ -108,7 +108,7 @@ function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: {
       </Field>
       {custom && (
         <Field label={he.settings.modelCustomLabel} hint={he.settings.modelCustomHint.replace('{example}', PROVIDERS.find((p) => p.id === provider)!.example)}>
-          {(f) => <Input {...f} dir="ltr" spellCheck={false} autoComplete="off" value={model} onChange={(e) => setModel(e.target.value.trim())} className="w-full font-mono text-sm" />}
+          {(f) => <Input {...f} dir="ltr" lang="en" spellCheck={false} autoComplete="off" value={model} onChange={(e) => setModel(e.target.value.trim())} className="w-full font-mono text-sm" />}
         </Field>
       )}
     </div>
@@ -117,7 +117,8 @@ function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: {
 
 type TestState = { state: 'idle' | 'testing' | 'ok' | 'fail'; msg?: string; detail?: string };
 
-function TestConnection({ provider }: { provider: ProviderId }) {
+/** `onKeyError` reports a problem with the key itself (missing / rejected) so the key field can show it. */
+function TestConnection({ provider, onKeyError }: { provider: ProviderId; onKeyError: (msg: string | null) => void }) {
   const [s] = useSettings();
   const { keys } = useKeys();
   const toast = useToast();
@@ -128,6 +129,7 @@ function TestConnection({ provider }: { provider: ProviderId }) {
     if (test.state === 'testing') return;
     if (!keys[provider]) {
       setTest({ state: 'fail', msg: he.settings.noKeyToTest });
+      onKeyError(he.settings.noKeyToTest);
       toast(he.settings.noKeyToTest, { tone: 'danger' });
       return;
     }
@@ -142,11 +144,13 @@ function TestConnection({ provider }: { provider: ProviderId }) {
       const data = (await res.json()) as { ok?: boolean; code?: string; error?: string };
       if (data.ok) {
         setTest({ state: 'ok' });
+        onKeyError(null);
         toast(`${he.settings.testSuccess} · ${name}`, { tone: 'success' });
       } else {
         const code = errorCode(data.code || data.error || '');
         const msg = he.errors[code];
         setTest({ state: 'fail', msg, detail: data.error });
+        onKeyError(code === 'invalidKey' || code === 'missingKey' ? msg : null);
         toast(he.settings.testFailed.replace('{reason}', msg), { tone: 'danger' });
       }
     } catch {
@@ -169,7 +173,7 @@ function TestConnection({ provider }: { provider: ProviderId }) {
       </div>
       {test.state === 'fail' && test.detail && (
         <details className="text-caption text-muted">
-          <summary className="cursor-pointer font-semibold">{he.settings.testFailedDetails}</summary>
+          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{he.settings.testFailedDetails}</summary>
           <p dir="ltr" lang="en" className="mt-1 break-all font-mono text-xs">
             {test.detail.slice(0, 300)}
           </p>
@@ -222,6 +226,10 @@ export function AccessSection() {
   const p = s.provider;
   const info = PROVIDERS.find((x) => x.id === p)!;
   const anyKey = Object.values(keys).some(Boolean);
+  // Error tied to the key field (aria-invalid + aria-describedby) after a failed connection test.
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const currentKey = keys[p];
+  useEffect(() => setKeyError(null), [p, currentKey]);
 
   useEffect(() => {
     fetch('/api/models')
@@ -274,6 +282,7 @@ export function AccessSection() {
               </>
             }
             hint={keys[p] ? `${remember ? he.settings.keyOnDevice : he.settings.keyInSession} ${he.settings.keyStorageNote}` : he.settings.keyStorageNote}
+            error={keyError}
           >
             {(f) => <KeyField provider={p} field={f} />}
           </Field>
@@ -288,7 +297,7 @@ export function AccessSection() {
             }}
           />
 
-          <TestConnection key={`t-${p}`} provider={p} />
+          <TestConnection key={`t-${p}`} provider={p} onKeyError={setKeyError} />
 
           <ModelPicker key={`m-${p}`} provider={p} orModels={orModels} />
 

@@ -32,10 +32,10 @@ export function AccountButton() {
     <Link
       href="/account"
       aria-current={current}
-      className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-border-strong px-3 text-caption font-semibold hover:bg-surface-2"
+      className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border-strong px-3 text-caption max-[400px]:px-2.5 font-semibold hover:bg-surface-2"
     >
       <IconUser width={16} height={16} />
-      {he.shell.signIn}
+      <span className="max-[400px]:sr-only">{he.shell.signIn}</span>
     </Link>
   );
 }

@@ -107,15 +107,20 @@ export function DocxView({
     const host = hostRef.current;
     if (!host || state !== 'ready') return;
     host.querySelectorAll('.badge[data-k]').forEach((b) => b.remove());
+    // One roving tab stop: the selected sentence, else the first highlighted one, else the first.
+    const ids = [...spansRef.current.keys()];
+    const tabStop = selected !== null && spansRef.current.has(selected) ? selected : (ids.find((id) => decor(id).label) ?? ids[0]);
     for (const [id, spans] of spansRef.current) {
       const d = decor(id);
       spans.forEach((sp, i) => {
         sp.className = `sent ${d.cls}`;
         if (i === 0) {
+          // A sentence can span several formatted runs; only the first is the button, so its name
+          // is the whole sentence text (plus the band for highlighted ones).
+          const text = sentencesRef.current.find((s) => s.id === id)?.text || sp.textContent || '';
           sp.setAttribute('role', 'button');
-          sp.tabIndex = selected === id ? 0 : -1;
-          if (d.label) sp.setAttribute('aria-label', d.label);
-          else sp.removeAttribute('aria-label');
+          sp.tabIndex = tabStop === id ? 0 : -1;
+          sp.setAttribute('aria-label', d.label ? d.label.replace('{text}', text) : text);
         }
         if (selected === id) sp.setAttribute('aria-current', 'true');
         else sp.removeAttribute('aria-current');
@@ -134,13 +139,15 @@ export function DocxView({
   return (
     <div>
       <div className="mb-2 flex items-center gap-2 text-caption">
-        <span className="text-muted">תצוגת Word:</span>
+        <span className="text-muted">
+          תצוגת <span lang="en">Word</span>:
+        </span>
         {(['page', 'flow'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             aria-pressed={mode === m}
-            className={`rounded-full border px-3 py-1 font-semibold ${mode === m ? 'border-accent bg-accent/10' : 'border-border text-muted'}`}
+            className={`min-h-9 rounded-full border px-3 font-semibold ${mode === m ? 'border-accent bg-accent/10' : 'border-border-strong text-muted'}`}
           >
             {m === 'page' ? 'עמודים' : 'רציף'}
           </button>
@@ -158,7 +165,10 @@ export function DocxView({
         }}
         onKeyDown={(e) => {
           const el = (e.target as HTMLElement).closest('[data-s]') as HTMLElement | null;
-          if (el && e.key === 'Enter') onSelect(Number(el.dataset.s));
+          if (el && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onSelect(Number(el.dataset.s));
+          }
         }}
       />
     </div>

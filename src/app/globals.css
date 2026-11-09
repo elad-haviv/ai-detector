@@ -3,8 +3,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------- Design tokens ----------
-   Contrast (checked): text ≥ 4.5:1 on --bg/--surface/--surface-2; --border-strong and --focus ≥ 3:1
-   against --bg/--surface. --border is decorative only (card edges), never the sole edge of a control. */
+   Contrast (checked, M4): text ≥ 4.5:1 on --bg/--surface/--surface-2; --border-strong and --focus ≥ 3:1
+   against --bg/--surface/--surface-2 and every highlight band (light --focus 3.59:1 on --hl-3-bg);
+   highlight underlines (--hl-N-line) ≥ 3:1 against their band background and the page.
+   --border is decorative only (card edges), never the sole edge of a control. */
 :root {
   --bg: #faf8f4;
   --surface: #ffffff;
@@ -16,15 +18,15 @@
   --accent: #2b4c7e;
   --accent-fg: #ffffff;
   --accent-soft: rgb(43 76 126 / 0.1);
-  --focus: #3b6fd8;
+  --focus: #2d5fc4;
   --success: #2f6f5e;
   --warning: #8a5700;
   --danger: #a33a3a;
   --danger-fg: #ffffff;
   --hl-1-bg: #fdf1d6;
-  --hl-1-line: #c99a2e;
+  --hl-1-line: #a3741a;
   --hl-2-bg: #f9ddb0;
-  --hl-2-line: #b5701c;
+  --hl-2-line: #a05f12;
   --hl-3-bg: #f2c08f;
   --hl-3-line: #8a4510;
   --hl-3-badge: #8a4510;
@@ -96,6 +98,8 @@
   --text-h2--line-height: 1.4;
   --text-title: 1.375rem; /* 22 */
   --text-title--line-height: 1.3;
+  --text-score: 2.5rem; /* 40 */
+  --text-score--line-height: 1;
 }
 
 /* Text size setting (Settings → Display). Everything is rem-based, so this scales the whole UI. */
@@ -284,7 +288,8 @@ dialog.ui-dialog.sheet[open] {
   outline-offset: 2px;
 }
 .sent.dim {
-  opacity: 0.55;
+  /* ignored ("marked as fine") sentence: quieter but still readable (text-muted is ≥4.5:1) */
+  color: var(--text-muted);
 }
 .badge {
   font-family: var(--font-ui);
@@ -364,8 +369,47 @@ html {
   }
 }
 
+/* Disclosure marker that survives display:flex on <summary> (RTL: points to the inline end, down when open).
+   The empty alt text keeps screen readers from announcing the glyph. */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary::before {
+  content: "◂" / "";
+  display: inline-block;
+  margin-inline-end: 0.4em;
+  font-size: 0.8em;
+  transition: transform 150ms;
+}
+details[open] > summary::before {
+  transform: rotate(-90deg);
+}
+
 input[type="range"] {
   accent-color: var(--accent);
+}
+
+/* Room under the footer for the fixed mobile tab bar. */
+.tabbar-pad {
+  padding-bottom: 5rem;
+}
+@media (min-width: 768px) {
+  .tabbar-pad {
+    padding-bottom: 0;
+  }
+}
+/* Short viewports (landscape phones, 400% zoom on a desktop = 320×256 CSS px): sticky/fixed bars
+   would cover most of the screen, so they scroll with the page instead (WCAG 1.4.10 reflow). */
+@media (max-height: 30rem) {
+  .unstick-short {
+    position: static !important;
+  }
+  .tabbar-pad {
+    padding-bottom: 0;
+  }
 }
 
 .pb-safe {
@@ -376,9 +420,9 @@ input[type="range"] {
 .docx-host {
   /* the page is always paper-white, so keep light highlight tokens inside it */
   --hl-1-bg: #fdf1d6;
-  --hl-1-line: #c99a2e;
+  --hl-1-line: #a3741a;
   --hl-2-bg: #f9ddb0;
-  --hl-2-line: #b5701c;
+  --hl-2-line: #a05f12;
   --hl-3-bg: #f2c08f;
   --hl-3-line: #8a4510;
   --hl-3-badge: #8a4510;

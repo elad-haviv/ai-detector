@@ -40,7 +40,7 @@ export default function SettingsPage() {
       <h1 className="text-title font-bold">{he.settings.title}</h1>
       <p className="mt-1 text-sm text-muted">{he.settings.autosaved}</p>
 
-      <nav aria-label={he.settings.sectionsNav} className="sticky top-14 z-10 -mx-4 mt-3 bg-bg/95 px-4 py-2 backdrop-blur">
+      <nav aria-label={he.settings.sectionsNav} className="unstick-short sticky top-14 z-10 -mx-4 mt-3 bg-bg/95 px-4 py-2 backdrop-blur">
         <ul className="flex gap-2">
           {SECTIONS.map((x) => (
             <li key={x.id}>
@@ -88,7 +88,7 @@ export default function SettingsPage() {
               <>
                 <Field label={he.settings.model} id="dm">
                   {(f) => (
-                    <Select {...f} dir="ltr" value={s.decisionModel} onChange={(e) => update({ decisionModel: e.target.value })} className="font-mono text-sm">
+                    <Select {...f} dir="ltr" lang="en" value={s.decisionModel} onChange={(e) => update({ decisionModel: e.target.value })} className="font-mono text-sm">
                       {[...new Set([s.decisionModel, ...decisionModels.map((m) => m.id)])].map((id) => (
                         <option key={id} value={id}>
                           {decisionModels.find((m) => m.id === id)?.name || id}

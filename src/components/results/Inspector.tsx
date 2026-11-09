@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useToast } from '../ui';
 import { PATTERN_BY_ID } from '@/lib/heuristics';
 import { he } from '@/lib/i18n/he';
 import type { Sentence, SentenceResult } from '@/lib/types';
@@ -49,6 +50,7 @@ export function Inspector({
   onIgnore,
   onRewriteParagraph,
   decisionModel,
+  headingId,
 }: {
   sentence: Sentence;
   result: SentenceResult;
@@ -62,8 +64,26 @@ export function Inspector({
   onIgnore: () => void;
   onRewriteParagraph: () => void;
   decisionModel?: string;
+  /** id for the h2, so a container (the mobile sheet) can be labelled by it. */
+  headingId?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
+  const editId = `${headingId || 'insp'}-edit`;
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+      toast(he.inspector.copiedToast, { tone: 'success' });
+    } catch {
+      toast(he.inspector.copyFailed, { tone: 'danger' });
+    }
+  };
+  const apply = (text: string) => {
+    onApply(text);
+    toast(he.inspector.appliedToast, { tone: 'success' });
+  };
   const [editing, setEditing] = useState<string | null>(null);
   const band = bandOf(result.probability, threshold);
   const patterns = result.patterns.map((id) => PATTERN_BY_ID[id]).filter(Boolean);
@@ -71,37 +91,42 @@ export function Inspector({
   return (
     <div className="fade-in flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-ui font-bold">{he.inspector.title}</h2>
-        <span className="text-caption tabular-nums text-muted">
-          {total > 0 && index >= 0 ? `${index + 1}/${total}` : ''}
-        </span>
+        <h2 id={headingId} className="text-ui font-bold">
+          {he.inspector.title}
+        </h2>
+        {total > 0 && index >= 0 && (
+          <span className="text-caption tabular-nums text-muted">
+            <span aria-hidden>{`${index + 1}/${total}`}</span>
+            <span className="sr-only">{he.inspector.position.replace('{index}', String(index + 1)).replace('{total}', String(total))}</span>
+          </span>
+        )}
         <div className="ms-auto flex gap-1">
-          <button onClick={onPrev} aria-label={he.inspector.previous} title={`${he.inspector.previous} (k)`} className="grid size-9 place-items-center rounded-md hover:bg-surface-2">
+          <button type="button" data-nav="prev" onClick={onPrev} aria-label={he.inspector.previous} title={`${he.inspector.previous} (k)`} className="grid size-11 place-items-center rounded-md hover:bg-surface-2">
             <IconChevron dir="prev" />
           </button>
-          <button onClick={onNext} aria-label={he.inspector.next} title={`${he.inspector.next} (j)`} className="grid size-9 place-items-center rounded-md hover:bg-surface-2">
+          <button type="button" data-nav="next" onClick={onNext} aria-label={he.inspector.next} title={`${he.inspector.next} (j)`} className="grid size-11 place-items-center rounded-md hover:bg-surface-2">
             <IconChevron dir="next" />
           </button>
-          <button onClick={onClose} aria-label={he.inspector.close} className="grid size-9 place-items-center rounded-md hover:bg-surface-2">
+          <button type="button" onClick={onClose} aria-label={he.inspector.close} title={`${he.inspector.close} (Esc)`} className="grid size-11 place-items-center rounded-md hover:bg-surface-2">
             <IconX />
           </button>
         </div>
       </div>
 
       <div className="flex items-end gap-3">
-        <div className="text-[2.5rem] font-bold leading-none tabular-nums">{result.probability}%</div>
+        <div className="text-score font-bold tabular-nums">{result.probability}%</div>
         <div className="pb-1">
           <div className="text-caption text-muted">{he.inspector.probability}</div>
           {band > 0 && <span className={`badge b${band} !ms-0 !align-baseline`}>{BAND_LABEL[band]}</span>}
-          {result.status === 'pending' && <span className="text-caption text-muted">ממתין לניתוח המודל…</span>}
-          {result.status === 'failed' && <span className="text-caption text-danger">ניתוח המודל נכשל, מוצג ציון מקומי</span>}
+          {result.status === 'pending' && <span className="text-caption text-muted">{he.inspector.pending}</span>}
+          {result.status === 'failed' && <span className="text-caption text-danger">{he.inspector.failed}</span>}
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Signal label="מודל שפה" value={result.llm} />
-        {(decisionModel || result.decision !== undefined) && <Signal label="מודל החלטה" value={result.decision} />}
-        <Signal label="כללים מקומיים" value={result.heuristic} />
+        <Signal label={he.inspector.signalLlm} value={result.llm} />
+        {(decisionModel || result.decision !== undefined) && <Signal label={he.inspector.signalDecision} value={result.decision} />}
+        <Signal label={he.inspector.signalLocal} value={result.heuristic} />
       </div>
 
       <blockquote dir="auto" className="doc rounded-md border-s-4 border-border bg-surface-2 p-3 !text-base">
@@ -122,7 +147,7 @@ export function Inspector({
                 </div>
                 <p className="mt-1 text-caption text-muted">{p.descriptionHe}</p>
                 <p className="mt-1 text-caption">
-                  <span className="font-semibold">איך לתקן: </span>
+                  <span className="font-semibold">{he.inspector.howToFix}</span>
                   {p.fixHe}
                 </p>
               </li>
@@ -145,18 +170,10 @@ export function Inspector({
             <p dir="auto" className="doc !text-base">{result.rewrite}</p>
             <p className="mt-2 text-xs text-muted">{he.inspector.rewriteNote}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={() => onApply(result.rewrite!)} className="min-h-10 rounded-md bg-accent px-4 font-semibold text-accent-fg" title="a">
+              <button type="button" onClick={() => apply(result.rewrite!)} className="min-h-11 rounded-md bg-accent px-4 font-semibold text-accent-fg" title="a">
                 {he.inspector.apply}
               </button>
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(result.rewrite!);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
-                className="flex min-h-10 items-center gap-1.5 rounded-md border border-border px-4 font-semibold"
-                title="c"
-              >
+              <button type="button" onClick={() => copy(result.rewrite!)} className="flex min-h-11 items-center gap-1.5 rounded-md border border-border-strong px-4 font-semibold" title="c">
                 {copied ? <IconCheck width={16} /> : <IconCopy width={16} />}
                 {copied ? he.inspector.copied : he.inspector.copy}
               </button>
@@ -164,34 +181,39 @@ export function Inspector({
           </div>
         ) : (
           <p className="text-sm text-muted">
-            {result.status === 'heuristic-only' && !result.llm ? 'הצעות ניסוח זמינות אחרי חיבור ספק מודל.' : he.inspector.noRewrite}
+            {result.status === 'heuristic-only' && !result.llm ? he.inspector.rewriteNeedsProvider : he.inspector.noRewrite}
           </p>
         )}
       </section>
 
       {editing !== null && (
         <section>
-          <h3 className="mb-1 text-caption font-bold text-muted">עריכה ידנית</h3>
+          <h3 className="mb-1 text-caption font-bold text-muted">{he.inspector.manualEdit}</h3>
+          <label htmlFor={editId} className="sr-only">
+            {he.inspector.manualEditLabel}
+          </label>
           <textarea
+            id={editId}
             value={editing}
             onChange={(e) => setEditing(e.target.value)}
             dir="auto"
             rows={4}
             autoFocus
-            className="doc w-full rounded-md border border-border bg-surface p-2 !text-base"
+            className="doc control !text-base"
           />
           <div className="mt-2 flex gap-2">
             <button
+              type="button"
               onClick={() => {
-                if (editing.trim() && editing.trim() !== sentence.text) onApply(editing.trim());
+                if (editing.trim() && editing.trim() !== sentence.text) apply(editing.trim());
                 setEditing(null);
               }}
-              className="min-h-10 rounded-md bg-accent px-4 font-semibold text-accent-fg"
+              className="min-h-11 rounded-md bg-accent px-4 font-semibold text-accent-fg"
             >
-              שמירה
+              {he.inspector.save}
             </button>
-            <button onClick={() => setEditing(null)} className="min-h-10 rounded-md border border-border px-4 font-semibold">
-              ביטול
+            <button type="button" onClick={() => setEditing(null)} className="min-h-11 rounded-md border border-border-strong px-4 font-semibold">
+              {he.ui.cancel}
             </button>
           </div>
         </section>
@@ -199,14 +221,21 @@ export function Inspector({
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         {editing === null && (
-          <button onClick={() => setEditing(sentence.text)} className="min-h-10 rounded-md px-3 text-sm font-semibold text-accent hover:bg-surface-2">
-            עריכה ידנית
+          <button type="button" onClick={() => setEditing(sentence.text)} className="min-h-11 rounded-md px-3 text-sm font-semibold text-accent hover:bg-surface-2">
+            {he.inspector.manualEdit}
           </button>
         )}
-        <button onClick={onIgnore} className="min-h-10 rounded-md px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-text">
-          {result.ignored ? 'ביטול הסימון כתקין' : he.inspector.ignore}
+        <button
+          type="button"
+          onClick={() => {
+            onIgnore();
+            toast(result.ignored ? he.inspector.unignoredToast : he.inspector.ignoredToast);
+          }}
+          className="min-h-11 rounded-md px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-text"
+        >
+          {result.ignored ? he.inspector.unignore : he.inspector.ignore}
         </button>
-        <button onClick={onRewriteParagraph} className="min-h-10 rounded-md px-3 text-sm font-semibold text-accent hover:bg-surface-2">
+        <button type="button" onClick={onRewriteParagraph} className="min-h-11 rounded-md px-3 text-sm font-semibold text-accent hover:bg-surface-2">
           {he.results.rewriteParagraph}
         </button>
       </div>
