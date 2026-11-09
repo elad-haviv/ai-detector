@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getFile } from '@/lib/blobStore';
 import { annotateRendered, buildEditedDocx } from '@/lib/docx/model';
 import type { Sentence } from '@/lib/types';
+import { useLangAttr, useT } from '@/lib/i18n/client';
 
 export interface Decor {
   cls: string;
@@ -30,6 +31,8 @@ export function DocxView({
   onSelect: (id: number) => void;
   onUnavailable: () => void;
 }) {
+  const t = useT();
+  const langAttr = useLangAttr();
   const hostRef = useRef<HTMLDivElement>(null);
   const styleRef = useRef<HTMLDivElement>(null);
   const spansRef = useRef<Map<number, HTMLElement[]>>(new Map());
@@ -140,7 +143,9 @@ export function DocxView({
     <div>
       <div className="mb-2 flex items-center gap-2 text-caption">
         <span className="text-muted">
-          תצוגת <span lang="en">Word</span>:
+          {t.docx.viewBefore}
+          <span lang={langAttr('en')}>Word</span>
+          {t.docx.viewAfter}
         </span>
         {(['page', 'flow'] as const).map((m) => (
           <button
@@ -149,12 +154,12 @@ export function DocxView({
             aria-pressed={mode === m}
             className={`min-h-9 rounded-full border px-3 font-semibold ${mode === m ? 'border-accent bg-accent/10' : 'border-border-strong text-muted'}`}
           >
-            {m === 'page' ? 'עמודים' : 'רציף'}
+            {m === 'page' ? t.docx.pages : t.docx.flow}
           </button>
         ))}
-        {state === 'loading' && <span className="ms-auto text-muted">טוען את המסמך…</span>}
+        {state === 'loading' && <span className="ms-auto text-muted">{t.docx.loading}</span>}
       </div>
-      {state === 'error' && <p className="card p-4 text-danger">לא הצלחנו להציג את קובץ ה-Word. אפשר לעבור לתצוגת טקסט.</p>}
+      {state === 'error' && <p className="card p-4 text-danger">{t.docx.error}</p>}
       <div ref={styleRef} />
       <div
         ref={hostRef}

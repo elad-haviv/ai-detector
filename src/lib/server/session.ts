@@ -11,8 +11,8 @@
 import 'server-only';
 import { createHmac, randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 
-export const SESSION_COOKIE = 'kulmus_session';
-export const OAUTH_COOKIE = 'kulmus_oauth';
+export const SESSION_COOKIE = 'penprint_session';
+export const OAUTH_COOKIE = 'penprint_oauth';
 export const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days, seconds
 export const OAUTH_MAX_AGE = 10 * 60; // 10 minutes
 

@@ -174,7 +174,7 @@ export async function chatJson({ provider, apiKey, model, system, user, maxToken
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
     if (provider === 'openrouter') {
       headers['HTTP-Referer'] = process.env.APP_URL || 'http://localhost:3000';
-      headers['X-Title'] = 'Kulmus AI-writing coach';
+      headers['X-Title'] = 'Penprint AI-writing coach';
     }
     const res = await fetch(url, {
       method: 'POST',
@@ -309,7 +309,7 @@ export async function decide(args: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${args.apiKey}`,
       'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-      'X-Title': 'Kulmus AI-writing coach',
+      'X-Title': 'Penprint AI-writing coach',
     },
     body: JSON.stringify({ model: args.model, state, questions }),
   });
@@ -340,7 +340,7 @@ export async function decideDocument(args: { apiKey: string; model: string; ques
       'Content-Type': 'application/json',
       Authorization: `Bearer ${args.apiKey}`,
       'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-      'X-Title': 'Kulmus AI-writing coach',
+      'X-Title': 'Penprint AI-writing coach',
     },
     body: JSON.stringify({
       model: args.model,

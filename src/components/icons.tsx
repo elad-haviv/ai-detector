@@ -40,10 +40,10 @@ export const IconUpload = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 export const IconChevron = (p: SVGProps<SVGSVGElement> & { dir?: 'prev' | 'next' }) => {
-  const { dir = 'next', ...rest } = p;
-  // RTL: "next" points left
+  const { dir = 'next', className = '', ...rest } = p;
+  // Drawn for RTL ("next" points left); `.dir-flip` mirrors it in LTR pages (see globals.css).
   return (
-    <svg {...base(rest)}>
+    <svg {...base(rest)} className={`dir-flip ${className}`}>
       <path d={dir === 'next' ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} />
     </svg>
   );
@@ -128,5 +128,11 @@ export const IconShield = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6Z" />
     <path d="m9 12 2 2 4-4" />
+  </svg>
+);
+export const IconGlobe = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z" />
   </svg>
 );

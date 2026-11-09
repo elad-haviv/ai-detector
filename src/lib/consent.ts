@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Cookie consent record. Stored in the essential cookie `kulmus_consent` (12 months) as
+ * Cookie consent record. Stored in the essential cookie `penprint_consent` (12 months) as
  * `<choice>.<ISO date>`, readable by the page so any future optional script can check it.
  *
- * Today Kulmus uses essential cookies only, so the choice changes nothing at runtime. ANY future
+ * Today Penprint uses essential cookies only, so the choice changes nothing at runtime. ANY future
  * analytics or marketing code MUST call `getConsent()` and run only when `analytics` is true.
  */
 export type ConsentChoice = 'all' | 'essential';
@@ -16,9 +16,9 @@ export interface Consent {
 }
 
 /** Event the footer "cookie settings" button dispatches (cancelable); CookieConsent handles it. */
-export const OPEN_COOKIE_SETTINGS_EVENT = 'kulmus:open-cookie-settings';
+export const OPEN_COOKIE_SETTINGS_EVENT = 'penprint:open-cookie-settings';
 
-export const CONSENT_COOKIE = 'kulmus_consent';
+export const CONSENT_COOKIE = 'penprint_consent';
 const MAX_AGE = 365 * 24 * 60 * 60;
 
 export function getConsent(): Consent | null {

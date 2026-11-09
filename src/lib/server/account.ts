@@ -9,7 +9,7 @@ import { appOrigin, clearCookie, readCookie, readSession, sessionCookie, session
 
 export function configured(): AccountInfo['configured'] {
   const google = Boolean(googleConfig() && sessionSecret());
-  return { google, billing: google && Boolean(checkoutConfig()) };
+  return { google, billing: google && Boolean(checkoutConfig('he')) };
 }
 
 export function accountInfo(session: SessionPayload | null, sub: SessionSub | undefined): AccountInfo {

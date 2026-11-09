@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { getConsent, OPEN_COOKIE_SETTINGS_EVENT, setConsent, type Consent, type ConsentChoice } from '@/lib/consent';
-import { he } from '@/lib/i18n/he';
+import { useT } from '@/lib/i18n/client';
 import { Button, Dialog, useToast } from './ui';
 
 export { getConsent } from '@/lib/consent';
@@ -12,10 +12,11 @@ export { getConsent } from '@/lib/consent';
  *
  * - Banner: a non-modal `role="region"` at the bottom (above the mobile tab bar). It does not trap
  *   focus or cover content: the page gets bottom padding equal to its height while it shows.
- * - The footer's "הגדרות עוגיות" dispatches OPEN_COOKIE_SETTINGS_EVENT; we preventDefault() it
+ * - The footer's "Cookie settings" dispatches OPEN_COOKIE_SETTINGS_EVENT; we preventDefault() it
  *   (telling the footer it was handled) and open a Dialog with the categories.
  */
 export function CookieConsent() {
+  const t = useT();
   const [consent, setState] = useState<Consent | null>(null);
   const [banner, setBanner] = useState(false);
   const [dialog, setDialog] = useState(false);
@@ -56,7 +57,7 @@ export function CookieConsent() {
     setState(setConsent(choice));
     setBanner(false);
     setDialog(false);
-    toast(he.consent.saved, { tone: 'success' });
+    toast(t.consent.saved, { tone: 'success' });
   };
 
   return (
@@ -65,7 +66,7 @@ export function CookieConsent() {
         <div
           ref={ref}
           role="region"
-          aria-label={he.consent.regionLabel}
+          aria-label={t.consent.regionLabel}
           tabIndex={-1}
           data-consent-banner
           className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border-strong bg-surface shadow-lg md:bottom-0"
@@ -73,17 +74,17 @@ export function CookieConsent() {
           <div className="mx-auto flex max-w-[1100px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-6">
             <div className="min-w-0 flex-1 text-sm">
               <h2 id="consent-title" className="font-bold">
-                {he.consent.title}
+                {t.consent.title}
               </h2>
-              <p className="mt-0.5 text-muted">{he.consent.body}</p>
+              <p className="mt-0.5 text-muted">{t.consent.body}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="primary" onClick={() => choose('all')}>
-                {he.consent.accept}
+                {t.consent.accept}
               </Button>
-              <Button onClick={() => choose('essential')}>{he.consent.essentialOnly}</Button>
+              <Button onClick={() => choose('essential')}>{t.consent.essentialOnly}</Button>
               <Link href="/privacy#cookies" className="inline-flex min-h-11 items-center px-2 font-semibold text-accent underline underline-offset-4 hover:no-underline">
-                {he.consent.details}
+                {t.consent.details}
               </Link>
             </div>
           </div>
@@ -93,31 +94,31 @@ export function CookieConsent() {
       <Dialog
         open={dialog}
         onClose={() => setDialog(false)}
-        title={he.consent.dialogTitle}
-        description={he.consent.dialogIntro}
+        title={t.consent.dialogTitle}
+        description={t.consent.dialogIntro}
         footer={
           <>
-            <Button onClick={() => choose('essential')}>{he.consent.essentialOnly}</Button>
+            <Button onClick={() => choose('essential')}>{t.consent.essentialOnly}</Button>
             <Button variant="primary" onClick={() => choose('all')}>
-              {he.consent.accept}
+              {t.consent.accept}
             </Button>
           </>
         }
       >
         <ul className="space-y-3">
-          <Category title={he.consent.essentialTitle} body={he.consent.essentialBody} state={he.consent.alwaysOn} checked />
-          <Category title={he.consent.analyticsTitle} body={he.consent.analyticsBody} state={he.consent.notInUse} checked={false} />
+          <Category title={t.consent.essentialTitle} body={t.consent.essentialBody} state={t.consent.alwaysOn} checked />
+          <Category title={t.consent.analyticsTitle} body={t.consent.analyticsBody} state={t.consent.notInUse} checked={false} />
         </ul>
         {consent && (
           <p className="mt-3 text-caption text-muted">
-            {he.consent.current
-              .replace('{choice}', consent.choice === 'all' ? he.consent.currentAll : he.consent.currentEssential)
+            {t.consent.current
+              .replace('{choice}', consent.choice === 'all' ? t.consent.currentAll : t.consent.currentEssential)
               .replace('{date}', consent.date)}
           </p>
         )}
         <p className="mt-2 text-sm">
           <Link href="/privacy#cookies" onClick={() => setDialog(false)} className="font-semibold text-accent underline underline-offset-4 hover:no-underline">
-            {he.consent.details}
+            {t.consent.details}
           </Link>
         </p>
       </Dialog>
@@ -126,7 +127,7 @@ export function CookieConsent() {
 }
 
 function Category({ title, body, state, checked }: { title: string; body: string; state: string; checked: boolean }) {
-  const id = `cc-${title.length}-${checked ? 1 : 0}`;
+  const id = `cc-${checked ? "essential" : "optional"}`;
   return (
     <li className="rounded-lg border border-border p-3">
       <div className="flex items-center justify-between gap-3">

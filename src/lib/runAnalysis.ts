@@ -4,6 +4,8 @@ import { chunkSentences, detectLang, segment } from './segment';
 import { getKey } from './keyStore';
 import { getAccount } from './account';
 import { llmMode } from './store';
+import { currentLocale } from './i18n/dom';
+import { getDict } from './i18n';
 import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, AssessRequest, AssessResponse, DocumentAssessment, Lang, Sentence, SentenceResult, Settings } from './types';
 
 export type ChunkStatus = 'pending' | 'running' | 'done' | 'failed';
@@ -15,8 +17,11 @@ export function newId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/** Language for model explanations: the UI language ('ui', default), the text's language ('auto'), or a fixed one. */
 export function explanationLang(s: Settings, text: string): Lang {
-  return s.explanationLanguage === 'auto' ? detectLang(text) : s.explanationLanguage;
+  if (s.explanationLanguage === 'auto') return detectLang(text);
+  if (s.explanationLanguage === 'ui') return currentLocale();
+  return s.explanationLanguage;
 }
 
 /** Build an analysis with instant local results; LLM results are added by `enrich`. */
@@ -36,7 +41,7 @@ export function initialAnalysis(
   const document: DocumentAssessment = { ...localDocument(sentences, results), status: llmOn ? 'pending' : 'local' };
   return {
     id: newId(),
-    title: title.trim() || shortTitle(sentences[0]?.text || '') || 'ללא כותרת',
+    title: title.trim() || shortTitle(sentences[0]?.text || '') || getDict(currentLocale()).input.untitled,
     createdAt: Date.now(),
     context,
     sentences,

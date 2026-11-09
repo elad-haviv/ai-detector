@@ -2,24 +2,28 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { refreshAccount, signOut, useAccount } from '@/lib/account';
-import { he } from '@/lib/i18n/he';
+import { intlLocale, type Locale } from '@/lib/i18n';
+import { useLangAttr, useLocale, useT } from '@/lib/i18n/client';
 import { GoogleSignIn } from './GoogleSignIn';
 import { IconShield } from './icons';
 import { Button, ButtonLink, Card, useToast } from './ui';
 
-export function formatDate(iso?: string | number): string {
+export function formatDate(iso: string | number | undefined, locale: Locale): string {
   if (iso === undefined) return '';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(intlLocale(locale), { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function AccountView() {
+  const t = useT();
+  const locale = useLocale();
+  const langAttr = useLangAttr();
   const account = useAccount();
   const params = useSearchParams();
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState<'refresh' | 'portal' | 'signout' | null>(null);
-  const [checkoutMsg, setCheckoutMsg] = useState('');
+  const [checkoutMsg, setCheckoutMsg] = useState<'checkoutPending' | 'checkoutDone' | 'checkoutSlow' | null>(null);
   const polled = useRef(false);
   const error = params.get('error');
 
@@ -29,16 +33,16 @@ export function AccountView() {
     polled.current = true;
     let cancelled = false;
     (async () => {
-      setCheckoutMsg(he.account.checkoutPending);
+      setCheckoutMsg('checkoutPending');
       for (let i = 0; i < 6 && !cancelled; i++) {
         const s = await refreshAccount();
         if (s.plan === 'pro') {
-          setCheckoutMsg(he.account.checkoutDone);
+          setCheckoutMsg('checkoutDone');
           return;
         }
         await new Promise((r) => setTimeout(r, 3000));
       }
-      if (!cancelled) setCheckoutMsg(he.account.checkoutSlow);
+      if (!cancelled) setCheckoutMsg('checkoutSlow');
     })();
     return () => {
       cancelled = true;
@@ -53,18 +57,18 @@ export function AccountView() {
       if (!res.ok || !data.url) throw new Error();
       window.location.assign(data.url);
     } catch {
-      toast(he.account.portalError, { tone: 'danger' });
+      toast(t.account.portalError, { tone: 'danger' });
       setBusy(null);
     }
   }
 
   return (
     <div className="mx-auto max-w-[680px] px-4 py-6 md:py-10">
-      <h1 className="text-title font-bold">{he.account.title}</h1>
+      <h1 className="text-title font-bold">{t.account.title}</h1>
 
       {error && (
         <p role="alert" className="mt-4 rounded-lg border border-border border-s-4 border-s-danger bg-surface p-3 text-sm font-semibold text-danger">
-          {he.account.errors[error] || he.errors.unknown}
+          {t.account.errors[error] || t.errors.unknown}
         </p>
       )}
 
@@ -72,11 +76,11 @@ export function AccountView() {
         <Card className="mt-4 h-48 animate-pulse" aria-hidden />
       ) : !account.signedIn ? (
         <Card className="mt-4 space-y-4" padding="lg">
-          <h2 className="text-h2 font-bold">{he.account.signedOutTitle}</h2>
-          <p>{he.account.whySignIn}</p>
+          <h2 className="text-h2 font-bold">{t.account.signedOutTitle}</h2>
+          <p>{t.account.whySignIn}</p>
           <p className="flex items-start gap-2 text-sm text-muted">
             <IconShield className="mt-0.5 shrink-0 text-success" />
-            {he.account.whatWeKeep}
+            {t.account.whatWeKeep}
           </p>
           <GoogleSignIn returnTo="/account" />
         </Card>
@@ -87,7 +91,7 @@ export function AccountView() {
               {Array.from((account.name || account.email || '?').trim())[0]?.toUpperCase()}
             </span>
             <div className="min-w-0">
-              <p className="text-caption text-muted">{he.account.signedInAs}</p>
+              <p className="text-caption text-muted">{t.account.signedInAs}</p>
               {account.name && <p className="truncate font-bold">{account.name}</p>}
               <p dir="ltr" className="truncate text-start text-sm" data-testid="account-email">
                 {account.email}
@@ -96,50 +100,50 @@ export function AccountView() {
           </div>
 
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-t border-border pt-4 text-sm">
-            <dt className="font-semibold text-muted">{he.account.plan}</dt>
-            <dd className={account.plan === 'pro' ? 'font-bold text-success' : ''} lang={account.plan === 'pro' ? 'en' : undefined} data-testid="account-plan">
-              {account.plan === 'pro' ? he.account.planPro : he.account.planFree}
+            <dt className="font-semibold text-muted">{t.account.plan}</dt>
+            <dd className={account.plan === 'pro' ? 'font-bold text-success' : ''} lang={account.plan === 'pro' ? langAttr('en') : undefined} data-testid="account-plan">
+              {account.plan === 'pro' ? t.account.planPro : t.account.planFree}
             </dd>
             {account.subscription && (
               <>
-                <dt className="font-semibold text-muted">{he.account.status}</dt>
-                <dd>{he.account.statuses[account.subscription.status] || account.subscription.status}</dd>
+                <dt className="font-semibold text-muted">{t.account.status}</dt>
+                <dd>{t.account.statuses[account.subscription.status] || account.subscription.status}</dd>
               </>
             )}
             {account.subscription?.renewsAt && (
               <>
-                <dt className="font-semibold text-muted">{he.account.renewsOn}</dt>
-                <dd>{formatDate(account.subscription.renewsAt)}</dd>
+                <dt className="font-semibold text-muted">{t.account.renewsOn}</dt>
+                <dd>{formatDate(account.subscription.renewsAt, locale)}</dd>
               </>
             )}
             {account.subscription?.cancelsAt && (
               <>
-                <dt className="font-semibold text-muted">{he.account.cancelsOn}</dt>
-                <dd>{formatDate(account.subscription.cancelsAt)}</dd>
+                <dt className="font-semibold text-muted">{t.account.cancelsOn}</dt>
+                <dd>{formatDate(account.subscription.cancelsAt, locale)}</dd>
               </>
             )}
             {account.subscription?.status === 'past_due' && account.subscription.graceUntil && (
               <>
-                <dt className="font-semibold text-muted">{he.account.graceUntil}</dt>
-                <dd>{formatDate(account.subscription.graceUntil)}</dd>
+                <dt className="font-semibold text-muted">{t.account.graceUntil}</dt>
+                <dd>{formatDate(account.subscription.graceUntil, locale)}</dd>
               </>
             )}
           </dl>
-          {account.subscription?.status === 'past_due' && <p className="text-sm text-warning">{he.account.pastDueNote}</p>}
+          {account.subscription?.status === 'past_due' && <p className="text-sm text-warning">{t.account.pastDueNote}</p>}
 
           <p role="status" className="text-sm font-semibold empty:hidden">
-            {checkoutMsg}
+            {checkoutMsg && t.account[checkoutMsg]}
           </p>
 
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
             {account.subscription ? (
               <Button variant="primary" onClick={openPortal} aria-disabled={busy === 'portal' || undefined} aria-describedby="portal-hint">
-                {he.account.manageBilling}
+                {t.account.manageBilling}
               </Button>
             ) : (
               account.configured.billing && (
                 <ButtonLink href="/pricing" variant="primary">
-                  {he.account.upgrade}
+                  {t.account.upgrade}
                 </ButtonLink>
               )
             )}
@@ -150,10 +154,10 @@ export function AccountView() {
                 setBusy('refresh');
                 await refreshAccount();
                 setBusy(null);
-                toast(he.account.refreshed, { tone: 'success' });
+                toast(t.account.refreshed, { tone: 'success' });
               }}
             >
-              {busy === 'refresh' ? he.account.refreshing : he.account.refresh}
+              {busy === 'refresh' ? t.account.refreshing : t.account.refresh}
             </Button>
             <Button
               variant="ghost"
@@ -161,16 +165,16 @@ export function AccountView() {
                 setBusy('signout');
                 await signOut();
                 setBusy(null);
-                toast(he.account.signedOut);
+                toast(t.account.signedOut);
                 router.replace('/account');
               }}
             >
-              {he.account.signOut}
+              {t.account.signOut}
             </Button>
           </div>
           {account.subscription && (
             <p id="portal-hint" className="-mt-3 text-caption text-muted">
-              {he.account.manageBillingHint}
+              {t.account.manageBillingHint}
             </p>
           )}
         </Card>

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { he } from "@/lib/i18n/he";
-import type { LegalDoc } from "@/lib/i18n/legal.he";
+import type { Dict } from "@/lib/i18n";
+import type { LegalDoc } from "@/lib/i18n/legal";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 /** `[label](href)` → links; external ones open in a new tab and say so to screen readers. */
-function inline(text: string): ReactNode[] {
+function inline(text: string, t: Dict): ReactNode[] {
   const out: ReactNode[] = [];
   const re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
   let last = 0;
@@ -28,7 +29,7 @@ function inline(text: string): ReactNode[] {
           className={cls}
         >
           {label}
-          <span className="sr-only"> {he.settings.newTab}</span>
+          <span className="sr-only"> {t.settings.newTab}</span>
         </a>
       ),
     );
@@ -39,7 +40,10 @@ function inline(text: string): ReactNode[] {
 }
 
 /** A long-form legal document (privacy, terms, accessibility statement) with a table of contents and anchored sections. */
-export function LegalPage({ doc }: { doc: LegalDoc }) {
+export async function LegalPage({ doc }: { doc: LegalDoc }) {
+  const t = await getT();
+  // Table keys (cookie and storage names) are English identifiers: mark them only on the Hebrew page.
+  const codeLang = (await getLocale()) === "en" ? undefined : "en";
   return (
     <article
       className="mx-auto max-w-[760px] px-4 py-6 md:py-10"
@@ -48,12 +52,12 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
       <h1 id="legal-title" className="text-title font-bold">
         {doc.title}
       </h1>
-      <p className="mt-1 text-caption text-muted">{doc.updated ?? he.legal.updated}</p>
+      <p className="mt-1 text-caption text-muted">{doc.updated ?? t.legal.updated}</p>
       <p className="mt-4 leading-relaxed">{doc.intro}</p>
 
       <nav aria-labelledby="toc-title" className="card mt-5 p-4">
         <h2 id="toc-title" className="text-caption font-bold text-muted">
-          {he.legal.toc}
+          {t.legal.toc}
         </h2>
         <ol className="mt-1 grid gap-x-6 sm:grid-cols-2">
           {doc.sections.map((s, i) => (
@@ -82,12 +86,12 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           {s.blocks.map((b, j) =>
             "p" in b ? (
               <p key={j} className="leading-relaxed">
-                {inline(b.p)}
+                {inline(b.p, t)}
               </p>
             ) : "ul" in b ? (
               <ul key={j} className="list-disc space-y-2 ps-5 leading-relaxed">
-                {b.ul.map((t, k) => (
-                  <li key={k}>{inline(t)}</li>
+                {b.ul.map((item, k) => (
+                  <li key={k}>{inline(item, t)}</li>
                 ))}
               </ul>
             ) : (
@@ -104,7 +108,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
                     >
                       <p
                         dir="ltr"
-                        lang="en"
+                        lang={codeLang}
                         className="text-start font-mono text-xs font-bold"
                       >
                         {r[0]}
@@ -156,7 +160,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
                                 scope="row"
                                 className="px-3 py-2 text-start font-mono text-xs font-normal"
                                 dir="ltr"
-                                lang="en"
+                                lang={codeLang}
                               >
                                 {c}
                               </th>

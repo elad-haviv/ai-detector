@@ -1,17 +1,18 @@
 /**
- * Hebrew UI microcopy.
+ * Hebrew UI microcopy: the source dictionary. Its shape defines `Dict`, so en.ts fails to compile
+ * when a key is missing or extra. Add a string here first, then in en.ts (see docs/design-spec.md §14).
  *
- * App name: "קולמוס" (the scholar's pen; short, literary, not tied to "AI").
- * Alternatives considered:
- *   - "כתב יד"     : stresses the human hand behind the text
- *   - "טביעת עט"   : a play on "טביעת אצבע", the writer's own trace
- *   - "שורה אחר שורה" : describes the sentence-by-sentence method
+ * App name: "טביעת עט" in Hebrew, "Penprint" in English: a play on "fingerprint", the writer's own trace.
  *
- * Interpolation: {name} placeholders are replaced by the app.
+ * Interpolation: {name} placeholders, filled with `fmt()` from '@/lib/i18n'.
  */
 export const he = {
-  appName: 'קולמוס',
+  appName: 'טביעת עט',
   tagline: 'לראות איפה הטקסט נשמע מכני, ולהחזיר אותו לקול שלך',
+
+  meta: {
+    title: 'טביעת עט · זיהוי ושיפור ניסוח AI',
+  },
 
   nav: {
     analyze: 'ניתוח',
@@ -19,7 +20,7 @@ export const he = {
     settings: 'הגדרות',
     about: 'איך זה עובד',
     main: 'ניווט ראשי',
-    home: 'קולמוס, לדף הבית',
+    home: 'טביעת עט, לדף הבית',
   },
 
   shell: {
@@ -37,7 +38,10 @@ export const he = {
     signIn: 'התחברות',
     accountLabel: 'החשבון שלי: {name}',
     accountChipPro: 'מנוי Pro פעיל. מעבר לחשבון',
-    rights: '© {year} קולמוס',
+    rights: '© {year} טביעת עט',
+    /** Header language switch: shows the OTHER language, in that language. */
+    langSwitch: 'English',
+    langSwitchLabel: 'Switch language to English',
   },
 
   notFound: {
@@ -52,7 +56,7 @@ export const he = {
     whySignIn: 'צריך להתחבר רק כדי להירשם למנוי Pro או לנהל אותו. ניתוח עם מפתח משלכם או עם כללים מקומיים עובד בלי חשבון.',
     whatWeKeep: 'אנחנו לא שומרים עליכם דבר בשרת. אחרי ההתחברות שמכם וכתובת האימייל שלכם נשמרים רק בעוגיית התחברות חתומה בדפדפן שלכם.',
     google: 'התחברות עם Google',
-    googleCookieNote: 'ההתחברות שומרת עוגייה חיונית אחת (kulmus_session) למשך 30 יום.',
+    googleCookieNote: 'ההתחברות שומרת עוגייה חיונית אחת (penprint_session) למשך 30 יום.',
     notConfigured: 'ההתחברות עדיין לא הוגדרה בשרת הזה, ולכן היא לא זמינה כרגע.',
     signedInAs: 'מחובר/ת בתור',
     plan: 'תוכנית',
@@ -86,7 +90,7 @@ export const he = {
 
   pricing: {
     title: 'מחירים',
-    intro: 'שתי דרכים להשתמש בקולמוס. אפשר לעבור ביניהן בכל רגע.',
+    intro: 'שתי דרכים להשתמש בטביעת עט. אפשר לעבור ביניהן בכל רגע.',
     period: 'תקופת חיוב',
     monthly: 'חודשי',
     yearly: 'שנתי',
@@ -157,7 +161,7 @@ export const he = {
   consent: {
     regionLabel: 'הודעה על עוגיות',
     title: 'עוגיות ואחסון בדפדפן',
-    body: 'אנחנו משתמשים רק בעוגיות חיוניות: עוגיית התחברות (אם תתחברו) ועוגייה שזוכרת את הבחירה הזו. ההגדרות, ההיסטוריה והמפתחות שבחרתם לשמור נשמרים באחסון המקומי של הדפדפן שלכם. אין כאן כלי ניתוח תנועה ואין פרסומות.',
+    body: 'אנחנו משתמשים רק בעוגיות חיוניות: עוגיית התחברות (אם תתחברו), עוגייה שזוכרת את שפת הממשק ועוגייה שזוכרת את הבחירה הזו. ההגדרות, ההיסטוריה והמפתחות שבחרתם לשמור נשמרים באחסון המקומי של הדפדפן שלכם. אין כאן כלי ניתוח תנועה ואין פרסומות.',
     accept: 'אישור',
     essentialOnly: 'חיוניות בלבד',
     details: 'פרטים',
@@ -165,7 +169,7 @@ export const he = {
     dialogTitle: 'הגדרות עוגיות',
     dialogIntro: 'כך אנחנו משתמשים בעוגיות ובאחסון בדפדפן. אפשר לשנות את הבחירה בכל עת מהקישור "הגדרות עוגיות" בתחתית העמוד.',
     essentialTitle: 'חיוניות',
-    essentialBody: 'התחברות (kulmus_session), אבטחת ההתחברות עם Google למשך 10 דקות (kulmus_oauth) ושמירת הבחירה הזו (kulmus_consent). בלעדיהן האתר לא יכול לעבוד, ולכן הן תמיד פעילות.',
+    essentialBody: 'התחברות (penprint_session), אבטחת ההתחברות עם Google למשך 10 דקות (penprint_oauth), שפת הממשק שבחרתם (penprint_lang) ושמירת הבחירה הזו (penprint_consent). בלעדיהן האתר לא יכול לעבוד, ולכן הן תמיד פעילות.',
     alwaysOn: 'תמיד פעיל',
     analyticsTitle: 'ניתוח שימוש',
     analyticsBody: 'אין לנו כרגע כלים כאלה. אם נוסיף בעתיד, הם יופעלו רק אם תאשרו.',
@@ -205,7 +209,7 @@ export const he = {
     wordCount: '{count} מילים',
     sentenceCount: '{count} משפטים',
     analyzeButton: 'לנתח את הטקסט',
-    pageTitle: 'ניתוח טקסט · קולמוס: זיהוי ושיפור ניסוח AI',
+    pageTitle: 'ניתוח טקסט · טביעת עט: זיהוי ושיפור ניסוח AI',
     clearButton: 'ניקוי',
     sampleButton: 'לנסות עם טקסט לדוגמה',
     stepsTitle: 'איך זה עובד',
@@ -225,6 +229,12 @@ export const he = {
     docxKept: 'קובץ Word: {name}. התוצאות יוצגו על המסמך המעוצב עצמו, ואפשר יהיה להוריד אותו אחרי עריכה.',
     docxChanged: 'שינית את הטקסט, ולכן הניתוח יוצג כטקסט רגיל ולא בתצוגת Word.',
     fileLoaded: 'הקובץ נטען: {name}',
+    untitled: 'ללא כותרת',
+    sampleText: `בעולם המשתנה של ימינו, הבינה המלאכותית ממלאת תפקיד מרכזי בעיצוב פני החינוך. חשוב לציין כי השימוש בכלים אלו מהווה לא רק הזדמנות, אלא גם אתגר משמעותי עבור מורים, תלמידים ומקבלי החלטות. יתרה מכך, מחקרים רבים מראים כי שילוב טכנולוגיה בכיתה מעשיר את חוויית הלמידה, מעודד חשיבה ביקורתית ומטפח יצירתיות.
+
+בסמינר של פרופ' לוי ראיינתי שבעה מורים מבתי ספר בדרום. ארבעה מהם אמרו שהם כבר לא מבקשים עבודות בית כתובות. אחת המורות סיפרה שהיא חזרה למבחנים בכתב יד, "כמו בשנות התשעים". לא ציפיתי לזה.
+
+לסיכום, ניתן לומר כי הבינה המלאכותית היא חרב פיפיות: מחד גיסא היא פותחת אופקים חדשים, ומאידך גיסא היא מציבה דילמות אתיות מורכבות. רק באמצעות גישה הוליסטית ומאוזנת נוכל לממש את הפוטנציאל הגלום בה ולהבטיח עתיד טוב יותר לכולנו.`,
   },
 
   progress: {
@@ -284,7 +294,7 @@ export const he = {
     sentenceLabelDocx: '{text} (משפט חשוד, {band}, {percent}%)',
     edited: 'נערך',
     sheetExpand: 'הגדלת חלונית פרטי המשפט',
-    pageTitle: 'תוצאות: {title} · קולמוס',
+    pageTitle: 'תוצאות: {title} · טביעת עט',
     summaryTitle: 'סיכום וסינון',
     openSummary: 'סיכום וסינון',
     document: 'המסמך המנותח',
@@ -292,6 +302,53 @@ export const he = {
     preparing: 'מכין…',
     wordView: 'תצוגת Word',
     textView: 'תצוגת טקסט',
+    bands: { 0: 'מתחת לסף', 1: 'אפשרי', 2: 'סביר', 3: 'סביר מאוד' },
+    confidence: { low: 'ביטחון נמוך', medium: 'ביטחון בינוני', high: 'ביטחון גבוה' },
+    /** Sample letters shown in the legend's highlight swatches. */
+    legendSample: 'אבג',
+    localOnly: 'ניתוח מקומי בלבד',
+    coverage: ' · נותחו {percent}%',
+    running: 'מנתח…',
+    filteredBy: 'מסונן לפי:',
+    clearPatternFilter: 'ביטול הסינון לפי דפוס',
+    chunksFailed: '({count} מקטעים נכשלו, מוצג ציון מקומי עבורם.)',
+    providerDetails: 'פרטים מהספק',
+    /** Suffix for the downloaded, edited Word file: "<name> (טביעת עט).docx". */
+    downloadSuffix: 'טביעת עט',
+  },
+
+  score: {
+    label: 'סבירות לכתיבה בסגנון AI',
+    coverageOfText: ' · נותחו {percent}% מהטקסט',
+    provisional: ' · זמני',
+    localPending: 'מודל השפה עדיין קורא את הטקסט. עד שיחזרו תוצאות, המספר מבוסס רק על ביטויים מוכרים ואינו הערכה של הטקסט כולו.',
+    localNote: 'המספר מבוסס רק על מדדי סגנון ועל ביטויים מוכרים (נמצאו ב-{count} משפטים), בלי מודל שפה. זו אינדיקציה בלבד: טקסט AI "נקי" וקצר עלול לקבל כאן ציון נמוך. לניתוח מלא צריך לחבר ספק מודל בהגדרות.',
+    flaggedShare: '{share}% מהטקסט שנבדק נמצא במשפטים עם סבירות {high}% ומעלה.',
+    willUpdate: ' הציון יתעדכן כשהניתוח יסתיים.',
+    composition: 'ממה מורכב הציון',
+    documentJudgment: 'שיפוט המסמך כולו',
+    checking: 'בודק…',
+    failed: 'נכשל',
+    styleIndex: 'מדד סגנון',
+    shortText: 'טקסט קצר, משקל נמוך',
+    decisionModel: 'מודל החלטה',
+    evidence: 'ראיות',
+    aiEvidence: 'מצביע על AI',
+    humanEvidence: 'מצביע על כתיבה אנושית',
+    dirty: 'בוצעו שינויים. כדאי להריץ ניתוח מחדש.',
+    whatTitle: 'מה המספר אומר?',
+    whatBody:
+      'זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. כתיבת AI מודרנית ניכרת בעיקר ברמת המסמך: משפטים ארוכים ומאוזנים באופן אחיד, רשימות של שלושה שחוזרות, מחברים חלקים, היעדר הפניות ופרטים אישיים. לכן הציון נשען קודם כול על שיפוט המסמך כולו בידי מודל השפה ועל מדד סגנון שמחושב מקומית, ורק אחר כך על ממוצע המשפטים ועל מודל ההחלטה. גם ציוני המשפטים מושפעים מהשיפוט הכולל, כי משפט נקרא כחלק מהמסמך שלו.',
+    topPatterns: 'דפוסים בולטים',
+  },
+
+  docx: {
+    viewBefore: 'תצוגת ',
+    viewAfter: ':',
+    pages: 'עמודים',
+    flow: 'רציף',
+    loading: 'טוען את המסמך…',
+    error: 'לא הצלחנו להציג את קובץ ה-Word. אפשר לעבור לתצוגת טקסט.',
   },
 
   categories: {
@@ -370,6 +427,7 @@ export const he = {
     lexicalDiversityHint: 'היחס בין מספר המילים השונות לסך המילים. ערך נמוך מעיד על חזרתיות.',
     avgSentenceLength: 'אורך משפט ממוצע',
     avgSentenceLengthUnit: '{value} מילים',
+    sentences: '{count} משפטים',
     low: 'נמוך',
     medium: 'בינוני',
     high: 'גבוה',
@@ -452,11 +510,11 @@ export const he = {
     chatgptNote: 'OpenAI מאפשרת כרגע התחברות עם חשבון ChatGPT רק לשותפים נבחרים. כשהאפשרות תיפתח, נוסיף אותה כאן. בינתיים צריך מפתח API.',
     chatgptNotImplemented: 'ההתחברות עם ChatGPT עדיין לא זמינה.',
     localTitle: 'בלי מפתח: כללים מקומיים בלבד',
-    localBody: 'אפשר להשתמש בקולמוס גם בלי שום חיבור. הניתוח נעשה בדפדפן בעזרת כללים לשוניים קבועים: הם מסמנים ביטויים ודפוסי סגנון אופייניים, אבל לא נותנים הערכת סבירות מלאה ולא הצעות ניסוח.',
+    localBody: 'אפשר להשתמש בטביעת עט גם בלי שום חיבור. הניתוח נעשה בדפדפן בעזרת כללים לשוניים קבועים: הם מסמנים ביטויים ודפוסי סגנון אופייניים, אבל לא נותנים הערכת סבירות מלאה ולא הצעות ניסוח.',
     analysisSection: 'ניתוח',
     analysisIntro: 'כמה רגיש הסימון ובאיזו שפה יוצגו ההסברים.',
     displaySection: 'תצוגה',
-    displayIntro: 'ערכת צבעים, גודל טקסט ואחוזים ליד המשפטים.',
+    displayIntro: 'שפה, ערכת צבעים, גודל טקסט ואחוזים ליד המשפטים.',
     theme: 'ערכת צבעים',
     themeSystem: 'לפי המכשיר',
     themeLight: 'בהירה',
@@ -484,6 +542,10 @@ export const he = {
     langHe: 'עברית',
     langEn: 'English',
     langAuto: 'כשפת הטקסט',
+    langUi: 'כמו שפת הממשק',
+    explanationLanguageHint: 'הצעות הניסוח תמיד נשארות בשפה של המשפט עצמו.',
+    uiLanguage: 'שפת הממשק',
+    uiLanguageHint: 'ההחלפה חלה על כל האתר ונשמרת בעוגייה penprint_lang.',
   },
 
   history: {
@@ -539,4 +601,14 @@ export const he = {
   },
 } as const;
 
-export type HeStrings = typeof he;
+/** Deep-widens the literal types of `he` so another language can supply different strings. */
+type Widen<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly Widen<U>[]
+    : T extends object
+      ? { readonly [K in keyof T]: Widen<T[K]> }
+      : T;
+
+/** The dictionary type every UI language must satisfy (derived from the Hebrew source). */
+export type Dict = Widen<typeof he>;

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { he } from '@/lib/i18n/he';
+import { useT } from '@/lib/i18n/client';
 import { IconX } from '../icons';
 import { Button } from './Button';
 
@@ -33,6 +33,7 @@ export function Dialog({
   /** CSS selector inside the dialog to focus on open (default: first focusable, i.e. close button). */
   initialFocus?: string;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -86,7 +87,7 @@ export function Dialog({
                 </p>
               )}
             </div>
-            <Button variant="ghost" iconOnly aria-label={he.ui.close} onClick={() => onCloseRef.current()} className="-me-2">
+            <Button variant="ghost" iconOnly aria-label={t.ui.close} onClick={() => onCloseRef.current()} className="-me-2">
               <IconX />
             </Button>
           </div>
@@ -104,7 +105,7 @@ export function ConfirmDialog({
   title,
   body,
   confirmLabel,
-  cancelLabel = he.ui.cancel,
+  cancelLabel,
   danger,
   onConfirm,
   onCancel,
@@ -118,6 +119,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   return (
     <Dialog
       open={open}
@@ -129,7 +131,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button data-autofocus onClick={onCancel}>
-            {cancelLabel}
+            {cancelLabel ?? t.ui.cancel}
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
             {confirmLabel}

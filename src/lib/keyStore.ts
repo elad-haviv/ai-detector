@@ -1,5 +1,6 @@
 'use client';
 import { useSyncExternalStore } from 'react';
+import { migrateLegacyStorage } from './storageMigration';
 import type { ProviderId } from './types';
 
 /**
@@ -11,9 +12,10 @@ import type { ProviderId } from './types';
  * - Keys never go to our server except inside a single analysis request, and the server never
  *   stores them (see src/lib/server/llm.ts).
  *
- * Migration: before M2 keys were stored inside `kulmus:settings:v1` (localStorage). Those users
+ * Migration: before M2 keys were stored inside the settings record (localStorage). Those users
  * had chosen persistence implicitly, so their keys move once into the remembered store and are
- * stripped from the settings record.
+ * stripped from the settings record. Storage keys from the app's former name are renamed first
+ * (storageMigration.ts).
  */
 
 export type ApiKeys = Partial<Record<ProviderId, string>>;
@@ -22,9 +24,9 @@ interface Snapshot {
   remember: boolean;
 }
 
-const SESSION_KEY = 'kulmus:keys:session:v1';
-const LOCAL_KEY = 'kulmus:keys:v1';
-const LEGACY_SETTINGS_KEY = 'kulmus:settings:v1';
+const SESSION_KEY = 'penprint:keys:session:v1';
+const LOCAL_KEY = 'penprint:keys:v1';
+const LEGACY_SETTINGS_KEY = 'penprint:settings:v1';
 
 const EMPTY: Snapshot = { keys: {}, remember: false };
 const listeners = new Set<() => void>();
@@ -60,6 +62,7 @@ function clean(keys: ApiKeys): ApiKeys {
 export function migrateLegacyKeys() {
   if (migrated || typeof window === 'undefined') return;
   migrated = true;
+  migrateLegacyStorage();
   const ls = storage('local');
   if (!ls) return;
   try {

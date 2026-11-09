@@ -1,7 +1,9 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PATTERN_BY_ID, sensitivityThreshold } from '@/lib/heuristics';
-import { he } from '@/lib/i18n/he';
+import { fmt } from '@/lib/i18n';
+import { useLangAttr, useLocale, useT } from '@/lib/i18n/client';
+import { patternText } from '@/lib/patterns/text';
 import type { PatternCategory } from '@/lib/patterns/catalog';
 import { errorCode, explanationLang, type Progress } from '@/lib/runAnalysis';
 import { groupParagraphs } from '@/lib/segment';
@@ -15,7 +17,7 @@ import { Button, Dialog, useToast } from '../ui';
 import { DocxView, type Decor } from './DocxView';
 import { Inspector } from './Inspector';
 import { CATEGORIES, Filters, ProgressList, ScoreCard, Stats, TopPatterns } from './SummaryPanel';
-import { BAND_LABEL, BandLegend, CONFIDENCE_LABEL, ScoreRing, bandOf } from './shared';
+import { BandLegend, ScoreRing, bandOf } from './shared';
 
 interface Props {
   analysis: Analysis;
@@ -32,6 +34,9 @@ interface Props {
 
 export function ResultsView(props: Props) {
   const { analysis, progress, running, dirty } = props;
+  const t = useT();
+  const locale = useLocale();
+  const langAttr = useLangAttr();
   const [settings] = useSettings();
   const [threshold, setThreshold] = useState(() => sensitivityThreshold(settings.sensitivity));
   const [enabled, setEnabled] = useState<Set<PatternCategory>>(new Set(CATEGORIES));
@@ -76,21 +81,21 @@ export function ResultsView(props: Props) {
         cls: [band ? `b${band}` : '', !band && r?.hits.length && !r.ignored ? 'hint' : '', r?.status === 'pending' ? 'pending' : '', r?.status === 'failed' ? 'failed' : '', r?.edited ? 'edited' : '', r?.ignored ? 'dim' : '']
           .filter(Boolean)
           .join(' '),
-        badge: r?.edited ? { text: '✎ נערך', cls: '!border !border-accent !text-accent' } : showBadge ? { text: `${r.probability}%`, cls: `b${band}` } : undefined,
-        label: band ? he.results.sentenceLabelDocx.replace('{band}', BAND_LABEL[band]).replace('{percent}', String(r.probability)) : undefined,
+        badge: r?.edited ? { text: `✎ ${t.results.edited}`, cls: '!border !border-accent !text-accent' } : showBadge ? { text: `${r.probability}%`, cls: `b${band}` } : undefined,
+        label: band ? fmt(t.results.sentenceLabelDocx, { band: t.results.bands[band], percent: r.probability }) : undefined,
       };
     },
-    [analysis.results, visible, threshold, settings.alwaysShowPercent],
+    [analysis.results, visible, threshold, settings.alwaysShowPercent, t],
   );
 
   // A descriptive tab title while a result is open (restored when leaving the results view).
   useEffect(() => {
     const before = document.title;
-    document.title = he.results.pageTitle.replace('{title}', analysis.title);
+    document.title = fmt(t.results.pageTitle, { title: analysis.title });
     return () => {
       document.title = before;
     };
-  }, [analysis.title]);
+  }, [analysis.title, t]);
 
   async function downloadDocx() {
     setDownloading(true);
@@ -101,7 +106,7 @@ export function ResultsView(props: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = (analysis.source?.fileName || 'document.docx').replace(/\.docx$/i, '') + ' (קולמוס).docx';
+      a.download = (analysis.source?.fileName || 'document.docx').replace(/\.docx$/i, '') + ` (${t.results.downloadSuffix}).docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -169,11 +174,12 @@ export function ResultsView(props: Props) {
   const position = selected !== null ? flaggedIds.indexOf(selected) : -1;
   const announcement =
     current && currentResult && position >= 0
-      ? he.results.announceSentence
-          .replace('{index}', String(position + 1))
-          .replace('{total}', String(flaggedIds.length))
-          .replace('{percent}', String(currentResult.probability))
-          .replace('{band}', BAND_LABEL[bandOf(currentResult.probability, threshold)])
+      ? fmt(t.results.announceSentence, {
+          index: position + 1,
+          total: flaggedIds.length,
+          percent: currentResult.probability,
+          band: t.results.bands[bandOf(currentResult.probability, threshold)],
+        })
       : '';
 
   async function rewriteParagraph(paragraph: number) {
@@ -197,14 +203,14 @@ export function ResultsView(props: Props) {
       setParaRewrite({ paragraph, loading: false, text: data.rewrite, changes: data.changes });
     } catch (e) {
       const code = errorCode(e instanceof Error ? e.message : '');
-      setParaRewrite({ paragraph, loading: false, error: he.errors[code === 'missingKey' ? 'missingKey' : code === 'invalidKey' ? 'invalidKey' : code === 'rateLimit' ? 'rateLimit' : 'unknown'] });
+      setParaRewrite({ paragraph, loading: false, error: t.errors[code === 'missingKey' ? 'missingKey' : code === 'invalidKey' ? 'invalidKey' : code === 'rateLimit' ? 'rateLimit' : 'unknown'] });
     }
   }
 
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
+      const target = e.target as HTMLElement;
       if (e.key === 'Escape') {
         if (document.querySelector('dialog[open]')) return; // the dialog handles its own Esc
         if (selected !== null) closeDetails();
@@ -214,7 +220,7 @@ export function ResultsView(props: Props) {
         props.onReanalyze();
         return;
       }
-      if (t.closest('input, textarea, [contenteditable="true"]') || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (target.closest('input, textarea, [contenteditable="true"]') || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'j') step(1);
       else if (e.key === 'k') step(-1);
       else if (e.key === '[') setThreshold((v) => Math.max(0, v - 5));
@@ -229,17 +235,17 @@ export function ResultsView(props: Props) {
         });
       } else if (e.key === 'a' && currentResult?.rewrite && selected !== null) {
         props.onApply(selected, currentResult.rewrite);
-        toast(he.inspector.appliedToast, { tone: 'success' });
+        toast(t.inspector.appliedToast, { tone: 'success' });
       }
       else if (e.key === 'c' && currentResult?.rewrite)
         navigator.clipboard?.writeText(currentResult.rewrite).then(
-          () => toast(he.inspector.copiedToast, { tone: 'success' }),
-          () => toast(he.inspector.copyFailed, { tone: 'danger' }),
+          () => toast(t.inspector.copiedToast, { tone: 'success' }),
+          () => toast(t.inspector.copyFailed, { tone: 'danger' }),
         );
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [step, currentResult, selected, props, closeDetails, toast]);
+  }, [step, currentResult, selected, props, closeDetails, toast, t]);
 
   const llmPending = running && !!progress;
   const failedChunks = progress?.chunks.filter((c) => c.status === 'failed') || [];
@@ -258,13 +264,13 @@ export function ResultsView(props: Props) {
         onPrev={() => step(-1, 'prev')}
         onNext={() => step(1, 'next')}
         onClose={closeDetails}
-        onApply={(t) => props.onApply(current.id, t)}
+        onApply={(text) => props.onApply(current.id, text)}
         onIgnore={() => props.onToggleIgnore(current.id)}
         onRewriteParagraph={() => rewriteParagraph(current.paragraph)}
         decisionModel={analysis.meta.decisionModel}
       />
     ) : (
-      <p className="text-sm text-muted">{he.empty.inspector}</p>
+      <p className="text-sm text-muted">{t.empty.inspector}</p>
     );
 
   const summary = (
@@ -289,9 +295,10 @@ export function ResultsView(props: Props) {
       {patternFilter && (
         <button type="button" onClick={() => setPatternFilter(null)} className="card flex min-h-11 items-center justify-between p-3 text-sm">
           <span>
-            מסונן לפי: <strong>{PATTERN_BY_ID[patternFilter]?.nameHe}</strong>
+            {t.results.filteredBy} <strong>{PATTERN_BY_ID[patternFilter] ? patternText(PATTERN_BY_ID[patternFilter], locale).name : ''}</strong>
           </span>
           <IconX width={16} />
+          <span className="sr-only">{t.results.clearPatternFilter}</span>
         </button>
       )}
       <TopPatterns analysis={analysis} active={patternFilter} onPick={(id) => setPatternFilter((p) => (p === id ? null : id))} />
@@ -306,25 +313,25 @@ export function ResultsView(props: Props) {
         <ScoreRing value={analysis.overall.probability} size={36} stroke={4} />
         <div className="min-w-0 text-sm leading-tight">
           <div className="font-bold">
-            {analysis.overall.basis === 'local' ? 'ניתוח מקומי בלבד' : `${analysis.overall.probability}% · ${CONFIDENCE_LABEL[analysis.overall.confidence]}`}
-            {analysis.overall.basis === 'model' && (analysis.overall.coverage ?? 1) < 0.98 && ` · נותחו ${Math.round((analysis.overall.coverage ?? 0) * 100)}%`}
+            {analysis.overall.basis === 'local' ? t.results.localOnly : `${analysis.overall.probability}% · ${t.results.confidence[analysis.overall.confidence]}`}
+            {analysis.overall.basis === 'model' && (analysis.overall.coverage ?? 1) < 0.98 && fmt(t.results.coverage, { percent: Math.round((analysis.overall.coverage ?? 0) * 100) })}
           </div>
           <div className="truncate text-xs text-muted">
-            {running ? 'מנתח…' : he.results.sentencesFlagged.replace('{flagged}', String(flaggedIds.length)).replace('{total}', String(analysis.sentences.length))}
+            {running ? t.results.running : fmt(t.results.sentencesFlagged, { flagged: flaggedIds.length, total: analysis.sentences.length })}
           </div>
         </div>
         <div className="ms-auto flex gap-1">
-          <Button iconOnly onClick={() => setFiltersOpen(true)} aria-label={he.results.openSummary} aria-haspopup="dialog">
+          <Button iconOnly onClick={() => setFiltersOpen(true)} aria-label={t.results.openSummary} aria-haspopup="dialog">
             <IconFilter />
           </Button>
-          <Button iconOnly onClick={props.onReanalyze} disabled={running} aria-label={he.results.reanalyze}>
+          <Button iconOnly onClick={props.onReanalyze} disabled={running} aria-label={t.results.reanalyze}>
             <IconRefresh />
           </Button>
         </div>
       </div>
 
       <div className="grid gap-6 px-4 py-4 lg:grid-cols-[280px_minmax(0,1fr)_360px] lg:py-6">
-        <aside aria-label={he.results.summaryTitle} className="hidden space-y-4 lg:block lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
+        <aside aria-label={t.results.summaryTitle} className="hidden space-y-4 lg:block lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
           {summary}
         </aside>
 
@@ -335,40 +342,40 @@ export function ResultsView(props: Props) {
                 {analysis.title}
               </h1>
               <Button size="sm" onClick={props.onReanalyze} disabled={running} icon={<IconRefresh width={16} height={16} />} className="hidden lg:inline-flex" title="Ctrl+Enter">
-                {he.results.reanalyze}
+                {t.results.reanalyze}
               </Button>
               {isDocx && (
                 <>
                   <Button size="sm" variant="primary" onClick={downloadDocx} disabled={downloading} icon={<IconDownload width={16} height={16} />}>
-                    {downloading ? he.results.preparing : he.results.downloadWord}
+                    {downloading ? t.results.preparing : t.results.downloadWord}
                   </Button>
                   <Button size="sm" onClick={() => setPreferText((v) => !v)}>
-                    {preferText ? he.results.wordView : he.results.textView}
+                    {preferText ? t.results.wordView : t.results.textView}
                   </Button>
                 </>
               )}
               <Button size="sm" variant="ghost" onClick={props.onNew} className="text-accent">
-                {he.results.newAnalysis}
+                {t.results.newAnalysis}
               </Button>
             </div>
 
             {/* Always-visible legend + keyboard-friendly navigation between suspicious sentences */}
             <div className="unstick-short sticky top-28 z-10 -mx-1 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface/95 px-3 py-2 backdrop-blur lg:top-16">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-muted">{he.results.legendTitle}:</span>
+                <span className="text-xs font-semibold text-muted">{t.results.legendTitle}:</span>
                 <BandLegend />
               </div>
-              <div role="group" aria-label={he.results.sentenceNav} className="ms-auto flex items-center gap-1">
-                <Button size="sm" variant="ghost" onClick={() => step(-1, 'toolbar')} disabled={!flaggedIds.length} title={`${he.results.prevSuspicious} (k)`} icon={<IconChevron dir="prev" width={18} height={18} />}>
-                  <span className="sr-only sm:not-sr-only">{he.results.prevSuspicious}</span>
+              <div role="group" aria-label={t.results.sentenceNav} className="ms-auto flex items-center gap-1">
+                <Button size="sm" variant="ghost" onClick={() => step(-1, 'toolbar')} disabled={!flaggedIds.length} title={`${t.results.prevSuspicious} (k)`} icon={<IconChevron dir="prev" width={18} height={18} />}>
+                  <span className="sr-only sm:not-sr-only">{t.results.prevSuspicious}</span>
                 </Button>
                 <span className="min-w-16 text-center text-caption tabular-nums text-muted">
                   {position >= 0
-                    ? he.results.position.replace('{index}', String(position + 1)).replace('{total}', String(flaggedIds.length))
-                    : he.results.noneSelected.replace('{total}', String(flaggedIds.length))}
+                    ? fmt(t.results.position, { index: position + 1, total: flaggedIds.length })
+                    : fmt(t.results.noneSelected, { total: flaggedIds.length })}
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => step(1, 'toolbar')} disabled={!flaggedIds.length} title={`${he.results.nextSuspicious} (j)`}>
-                  <span className="sr-only sm:not-sr-only">{he.results.nextSuspicious}</span>
+                <Button size="sm" variant="ghost" onClick={() => step(1, 'toolbar')} disabled={!flaggedIds.length} title={`${t.results.nextSuspicious} (j)`}>
+                  <span className="sr-only sm:not-sr-only">{t.results.nextSuspicious}</span>
                   <IconChevron dir="next" width={18} height={18} />
                 </Button>
               </div>
@@ -385,14 +392,14 @@ export function ResultsView(props: Props) {
 
             {!running && failedChunks.length > 0 && (
               <div className="mb-4 rounded-lg border border-border border-s-4 border-s-danger bg-surface p-3 text-sm" role="alert">
-                {he.errors[errorCode(firstErr)]} ({failedChunks.length} מקטעים נכשלו, מוצג ציון מקומי עבורם.)
+                {t.errors[errorCode(firstErr)]} {fmt(t.results.chunksFailed, { count: failedChunks.length })}
                 <button type="button" onClick={props.onReanalyze} className="ms-2 min-h-9 font-semibold text-accent underline">
-                  {he.errors.retry}
+                  {t.errors.retry}
                 </button>
                 {firstErr && (
                   <details className="mt-1 text-xs text-muted">
-                    <summary className="flex min-h-9 cursor-pointer items-center">פרטים מהספק</summary>
-                    <code dir="ltr" lang="en" className="block break-all">{firstErr}</code>
+                    <summary className="flex min-h-9 cursor-pointer items-center">{t.results.providerDetails}</summary>
+                    <code dir="ltr" lang={langAttr('en')} className="block break-all">{firstErr}</code>
                   </details>
                 )}
               </div>
@@ -411,7 +418,7 @@ export function ResultsView(props: Props) {
                 onUnavailable={() => setDocxUnavailable(true)}
               />
             ) : (
-            <div ref={docRef} className="doc card p-5 md:p-8" role="document" aria-label={he.results.document}>
+            <div ref={docRef} className="doc card p-5 md:p-8" role="document" aria-label={t.results.document}>
               {paragraphs.map((para) => (
                 <p key={para[0].paragraph} dir="auto" className="mb-4 last:mb-0">
                   {para.map((s) => {
@@ -450,13 +457,13 @@ export function ResultsView(props: Props) {
                           {s.text}
                           {band > 0 && (
                             <span className="sr-only">
-                              {(showBadge ? he.results.sentenceSuffix : he.results.sentenceSuffixPercent).replace('{band}', BAND_LABEL[band]).replace('{percent}', String(r.probability))}
+                              {fmt(showBadge ? t.results.sentenceSuffix : t.results.sentenceSuffixPercent, { band: t.results.bands[band], percent: r.probability })}
                             </span>
                           )}
                           {r?.edited && (
                             <span className="badge !border !border-accent !text-accent">
                               <span aria-hidden>✎ </span>
-                              {he.results.edited}
+                              {t.results.edited}
                             </span>
                           )}
                           {showBadge && <span className={`badge b${band}`}>{r.probability}%</span>}
@@ -468,11 +475,11 @@ export function ResultsView(props: Props) {
               ))}
             </div>
             )}
-            {flaggedIds.length === 0 && !running && <p className="mt-3 text-center text-sm text-muted">{he.results.noneFlagged}</p>}
+            {flaggedIds.length === 0 && !running && <p className="mt-3 text-center text-sm text-muted">{t.results.noneFlagged}</p>}
             <p className="mt-6 text-xs text-muted">
-              {he.disclaimer.body}
+              {t.disclaimer.body}
               {analysis.meta.model && (
-                <span dir="ltr" lang="en" className="ms-1 font-mono">
+                <span dir="ltr" lang={langAttr('en')} className="ms-1 font-mono">
                   [{analysis.meta.model}
                   {analysis.meta.decisionModel ? ` + ${analysis.meta.decisionModel}` : ''} · {analysis.meta.heuristicsVersion}]
                 </span>
@@ -481,7 +488,7 @@ export function ResultsView(props: Props) {
           </div>
         </section>
 
-        <aside aria-label={he.inspector.title} className="hidden lg:block" data-inspector="desktop">
+        <aside aria-label={t.inspector.title} className="hidden lg:block" data-inspector="desktop">
           <div className="card sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto p-4">{inspector('insp-desktop-title')}</div>
         </aside>
       </div>
@@ -505,7 +512,7 @@ export function ResultsView(props: Props) {
               onClick={() => setSheetFull((v) => !v)}
               aria-expanded={sheetFull}
               className="focus-ring-inset sticky top-0 z-10 flex min-h-11 w-full items-center justify-center bg-surface"
-              aria-label={he.results.sheetExpand}
+              aria-label={t.results.sheetExpand}
             >
               <span aria-hidden className="h-1.5 w-10 rounded-full bg-border-strong" />
             </button>
@@ -515,7 +522,7 @@ export function ResultsView(props: Props) {
       )}
 
       {/* Mobile filters + summary sheet */}
-      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} title={he.results.summaryTitle} variant="full" className="lg:hidden">
+      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} title={t.results.summaryTitle} variant="full" className="lg:hidden">
         <div className="space-y-4">{summary}</div>
       </Dialog>
 
@@ -523,7 +530,7 @@ export function ResultsView(props: Props) {
       <Dialog
         open={!!paraRewrite}
         onClose={() => setParaRewrite(null)}
-        title={he.results.rewriteParagraph}
+        title={t.results.rewriteParagraph}
         variant="sheet"
         footer={
           paraRewrite?.text ? (
@@ -531,12 +538,12 @@ export function ResultsView(props: Props) {
               <Button
                 onClick={() =>
                   navigator.clipboard?.writeText(paraRewrite.text!).then(
-                    () => toast(he.inspector.copiedToast, { tone: 'success' }),
-                    () => toast(he.inspector.copyFailed, { tone: 'danger' }),
+                    () => toast(t.inspector.copiedToast, { tone: 'success' }),
+                    () => toast(t.inspector.copyFailed, { tone: 'danger' }),
                   )
                 }
               >
-                {he.inspector.copy}
+                {t.inspector.copy}
               </Button>
               <Button
                 variant="primary"
@@ -544,17 +551,17 @@ export function ResultsView(props: Props) {
                   props.onReplaceParagraph(paraRewrite.paragraph, paraRewrite.text!);
                   setParaRewrite(null);
                   setSelected(null);
-                  toast(he.inspector.appliedToast, { tone: 'success' });
+                  toast(t.inspector.appliedToast, { tone: 'success' });
                 }}
               >
-                {he.inspector.apply}
+                {t.inspector.apply}
               </Button>
             </>
           ) : undefined
         }
       >
         <div aria-live="polite" aria-busy={paraRewrite?.loading}>
-          {paraRewrite?.loading && <p className="text-muted">{he.progress.rewriting}</p>}
+          {paraRewrite?.loading && <p className="text-muted">{t.progress.rewriting}</p>}
           {paraRewrite?.error && <p className="font-semibold text-danger">{paraRewrite.error}</p>}
           {paraRewrite?.text && (
             <>
@@ -570,7 +577,7 @@ export function ResultsView(props: Props) {
                   ))}
                 </ul>
               )}
-              <p className="mt-2 text-xs text-muted">{he.inspector.rewriteNote}</p>
+              <p className="mt-2 text-xs text-muted">{t.inspector.rewriteNote}</p>
             </>
           )}
         </div>

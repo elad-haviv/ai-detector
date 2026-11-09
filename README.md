@@ -1,4 +1,6 @@
-# קולמוס: זיהוי ושיפור ניסוח AI
+# טביעת עט (Penprint): זיהוי ושיפור ניסוח AI
+
+> **English.** Penprint (Hebrew: טביעת עט) analyzes academic text in Hebrew and English sentence by sentence: it highlights sentences that read like language-model output, shows a likelihood, explains why, and suggests a rewrite. The interface is bilingual (Hebrew RTL / English LTR, switch in the header or in Settings → Display); see `README.en.md` for an English overview, and `docs/design-spec.md` §14 for how translations work.
 
 כלי לניתוח טקסטים אקדמיים (עברית ואנגלית). הוא מסמן כל משפט שנשמע כמו כתיבה של מודל שפה, מציג אחוז סבירות, מסביר מה הוביל לסימון ומציע ניסוח חלופי.
 
@@ -27,7 +29,7 @@ npm run dev
 
 ## ספקים ומפתחות
 
-שלוש דרכים להשתמש בקולמוס:
+שלוש דרכים להשתמש בטביעת עט:
 
 1. **מפתח API משלכם (חינם, BYOK).** ספקים נתמכים:
 
@@ -49,7 +51,8 @@ npm run dev
 - המפתחות נשמרים **רק בדפדפן**, בנפרד מההגדרות (`src/lib/keyStore.ts`).
 - ברירת המחדל: **ללשונית הזו בלבד** (`sessionStorage`), והם נמחקים כשסוגרים אותה.
 - סימון "לזכור במכשיר הזה" מעביר אותם ל-`localStorage`. כפתור "מחק את כל המפתחות" מוחק את שניהם.
-- מפתחות שנשמרו בגרסאות קודמות בתוך `kulmus:settings:v1` עוברים פעם אחת לאחסון "לזכור במכשיר" ונמחקים מההגדרות.
+- מפתחות שנשמרו בגרסאות קודמות בתוך רשומת ההגדרות עוברים פעם אחת לאחסון "לזכור במכשיר" ונמחקים מההגדרות.
+- שינוי השם (M5): מפתחות האחסון עברו מהקידומת הישנה של האפליקציה ל-`penprint:` (הגדרות, היסטוריה, מפתחות, דגל ההתחלה). ההעברה נעשית פעם אחת בדפדפן (`src/lib/storageMigration.ts`), וקובצי Word ב-IndexedDB עוברים ל-`penprint-files` בקריאה הראשונה (`src/lib/blobStore.ts`). עוגיות בשם הישן פשוט לא נקראות: מתחברים ומאשרים עוגיות מחדש.
 
 ### מה השרת עושה עם המפתח
 
@@ -65,7 +68,7 @@ npm run dev
 
 אין מסד נתונים ושום דבר לא נכתב לדיסק בשרת:
 
-- **זהות**: התחברות עם Google (OAuth 2.0 + PKCE, נכתב ידנית עם `fetch`, `src/lib/server/google.ts`). האימייל המאומת והשם נשמרים בעוגייה `kulmus_session`: ‏JSON ב-base64url + חתימת HMAC-SHA256 עם `SESSION_SECRET`, ‏HttpOnly, ‏Secure (חוץ מ-http://localhost), ‏SameSite=Lax, ‏30 יום (`src/lib/server/session.ts`). ה-state וה-PKCE verifier נשמרים בעוגייה חתומה קצרת מועד `kulmus_oauth` (‏10 דקות). חתימת ה-id_token לא נבדקת, כי הוא מתקבל ישירות מ-Google בהחלפת הקוד מעל TLS (OIDC Core §3.1.3.7); נבדקים `iss`, `aud`, `exp` ו-`email_verified`.
+- **זהות**: התחברות עם Google (OAuth 2.0 + PKCE, נכתב ידנית עם `fetch`, `src/lib/server/google.ts`). האימייל המאומת והשם נשמרים בעוגייה `penprint_session`: ‏JSON ב-base64url + חתימת HMAC-SHA256 עם `SESSION_SECRET`, ‏HttpOnly, ‏Secure (חוץ מ-http://localhost), ‏SameSite=Lax, ‏30 יום (`src/lib/server/session.ts`). ה-state וה-PKCE verifier נשמרים בעוגייה חתומה קצרת מועד `penprint_oauth` (‏10 דקות). חתימת ה-id_token לא נבדקת, כי הוא מתקבל ישירות מ-Google בהחלפת הקוד מעל TLS (OIDC Core §3.1.3.7); נבדקים `iss`, `aud`, `exp` ו-`email_verified`.
 - **מנוי**: ‏Paddle Billing הוא מקור האמת (`src/lib/server/billing/`, ממשק `BillingProvider` עם `findActiveSubscription(email)` ו-`createPortalUrl(customerId)`). חיפוש: `GET /customers?email=` ואז `GET /subscriptions?customer_id=…&status=active,trialing,past_due`. פורטל: `POST /customers/{id}/portal-sessions` ← `data.urls.general.overview`. התשלום עצמו ב-Paddle.js v2 (overlay), אחרי התחברות, עם האימייל של Google, כדי שהחיפוש לפי אימייל ימצא את המנוי.
 - **מטמון הזכאות**: העוגייה מחזיקה צילום של מצב המנוי (`sub.checkedAt`). צילום בן פחות מ-10 דקות נחשב תקף. אחרת השרת שואל את Paddle דרך מטמון בזיכרון (10 דקות, לפי אימייל, לכל מופע). נתיבי ה-API לא יכולים לכתוב עוגיות, ולכן העוגייה עצמה נחתמת מחדש ב-`GET /api/me` (נקרא בטעינה ובחזרה לחלון) וב-`POST /api/account/refresh`. אם Paddle לא זמין, המצב האחרון בעוגייה תקף עד 24 שעות ואז נסגר (free). ‏`active`/`trialing` = Pro; ‏`past_due` = Pro עד `PAST_DUE_GRACE_DAYS` ימים מתחילת התקופה.
 - **שימוש הוגן**: הגבלה בזיכרון לכל מופע, חלון נע של שעה לכל אימייל, רק לבקשות managed (`PRO_RATE_LIMIT_PER_HOUR`, ברירת מחדל 100). מעבר למגבלה: ‏429 `rate_limit`. ההגבלה "בערך": מתאפסת באתחול ולא משותפת בין מופעים.
@@ -82,27 +85,33 @@ npm run dev
 ### הגדרת Paddle (sandbox)
 
 1. נרשמים ב-sandbox-vendors.paddle.com.
-2. Catalog ← Products: מוצר "Kulmus Pro" עם מחיר חודשי (ואם רוצים גם שנתי). מעתיקים את מזהי `pri_…` ל-`NEXT_PUBLIC_PADDLE_PRICE_MONTHLY` / `NEXT_PUBLIC_PADDLE_PRICE_YEARLY`.
+2. Catalog ← Products: מוצר "Penprint Pro" עם מחיר חודשי (ואם רוצים גם שנתי). מעתיקים את מזהי `pri_…` ל-`NEXT_PUBLIC_PADDLE_PRICE_MONTHLY` / `NEXT_PUBLIC_PADDLE_PRICE_YEARLY`.
 3. Developer tools ← Authentication: יוצרים API key (הרשאות קריאה ל-customers ו-subscriptions, וכתיבה ל-customer portal sessions) ← `PADDLE_API_KEY`; ו-client-side token ← `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`.
 4. Checkout ← Checkout settings: מגדירים Default payment link (למשל `${APP_URL}/pricing`) ומאשרים את הדומיין.
 5. `PADDLE_ENV=sandbox`. תשלום בדיקה בכרטיס `4242 4242 4242 4242`. אחרי התשלום Paddle מחזיר ל-`/account?checkout=success`, והעמוד בודק את המנוי מחדש.
 6. למעבר לייצור: `PADDLE_ENV=production` ומפתחות/מחירים מהחשבון האמיתי.
 
+שפת דף התשלום של Paddle ומסך ההסכמה של Google עוקבים אחרי שפת הממשק (אפשר לקבע את Paddle עם `NEXT_PUBLIC_PADDLE_LOCALE`), ותווית המחיר באנגלית נלקחת מ-`NEXT_PUBLIC_PRO_PRICE_LABEL_EN`.
+
 משתני `NEXT_PUBLIC_PADDLE_*` נקראים בשרת בזמן הבקשה (עמוד המחירים דינמי), ולכן אפשר לשנות אותם בלי לבנות מחדש. בלי הגדרות Paddle עמוד המחירים מציג "בקרוב"; בלי Google, כפתורי ההתחברות מושבתים עם הסבר.
 
 ### עוגיות והסכמה
 
-רק עוגיות חיוניות: `kulmus_session`, ‏`kulmus_oauth`, ‏`kulmus_consent` (הבחירה בהודעת העוגיות, 12 חודשים). הודעת העוגיות (`src/components/CookieConsent.tsx`) מוצגת בביקור הראשון, ו"הגדרות עוגיות" בתחתית העמוד פותח אותה מחדש. כל קוד אנליטיקה עתידי חייב לבדוק `getConsent()` (`src/lib/consent.ts`).
+רק עוגיות חיוניות: `penprint_session`, ‏`penprint_oauth`, ‏`penprint_lang` (שפת הממשק, 12 חודשים, נקבעת רק כשמחליפים שפה), ‏`penprint_consent` (הבחירה בהודעת העוגיות, 12 חודשים). הודעת העוגיות (`src/components/CookieConsent.tsx`) מוצגת בביקור הראשון, ו"הגדרות עוגיות" בתחתית העמוד פותח אותה מחדש. כל קוד אנליטיקה עתידי חייב לבדוק `getConsent()` (`src/lib/consent.ts`).
+
+### שפות (עברית ואנגלית)
+
+הממשק זמין בעברית (RTL) ובאנגלית (LTR). המילונים ב-`src/lib/i18n/` ‏(`he.ts`, ‏`en.ts`, ‏`legal.he.ts`, ‏`legal.en.ts`); הטיפוס נגזר מהעברית, כך שמפתח חסר באנגלית הוא שגיאת קומפילציה. שפה נקבעת לפי העוגייה `penprint_lang`; בלי עוגייה לפי `Accept-Language` (השפה הראשונה מבין he/iw/en לפי סדר העדיפות), ואם אף אחת מהן לא מופיעה, עברית. השרת מרנדר את `<html lang dir>` בהתאם, כך שאין הבהוב. מחליפים שפה בכפתור בכותרת או בהגדרות ← תצוגה. שפת ההסברים מהמודל עוקבת כברירת מחדל אחרי שפת הממשק. פירוט ב-`docs/design-spec.md` סעיף 14.
 
 ### בדיקות
 
-`npm run check:m3` מריץ בדיקות יחידה בלי רשת: חתימת עוגייה ודחיית זיוף, ‏`returnTo`, ‏PKCE, ‏claims של Google, ‏Paddle עם `fetch` מדומה, והגבלת קצב.
+`npm run check:m3` מריץ בדיקות יחידה בלי רשת: חתימת עוגייה ודחיית זיוף, ‏`returnTo`, ‏PKCE, ‏claims של Google, ‏Paddle עם `fetch` מדומה, הגבלת קצב, בחירת שפה, התאמה מלאה בין המילון העברי לאנגלי וטקסט אנגלי לכל דפוס.
 
 ### נגישות
 
-האתר עומד בת״י 5568 ברמה AA (WCAG 2.0, ונבדק מול WCAG 2.1 AA), כנדרש בתקנה 35 לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות). הצהרת הנגישות נמצאת ב-`/accessibility` (התוכן ב-`src/lib/i18n/legal.he.ts`) ומקושרת מהתחתית של כל עמוד. לפני העלאה לאוויר יש למלא בה את פרטי רכז/ת הנגישות (שם, טלפון, אימייל) ואת פרטי הבדיקה עם קוראי מסך.
+האתר עומד בת״י 5568 ברמה AA (WCAG 2.0, ונבדק מול WCAG 2.1 AA), כנדרש בתקנה 35 לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות). הצהרת הנגישות נמצאת ב-`/accessibility` (התוכן ב-`src/lib/i18n/legal.he.ts`, ובאנגלית ב-`legal.en.ts`) ומקושרת מהתחתית של כל עמוד. לפני העלאה לאוויר יש למלא בה את פרטי רכז/ת הנגישות (שם, טלפון, אימייל) ואת פרטי הבדיקה עם קוראי מסך.
 
-בדיקה אוטומטית: מריצים את האתר (`npm run build && npm start`) ואז `A11Y_BASE_URL=http://localhost:3000 npm run a11y`. הסקריפט (`scripts/a11y.mjs`, ‏axe-core ב-Playwright) בודק את כל העמודים והמצבים העיקריים במצב בהיר וכהה, ברוחב 1280 ו-320 פיקסלים, ונכשל על כל הפרה. אחרי כל שינוי בממשק מריצים אותו שוב ומעדכנים את תאריך הבדיקה בהצהרה. פירוט ב-`docs/design-spec.md`, בסעיף Accessibility conformance.
+בדיקה אוטומטית: מריצים את האתר (`npm run build && npm start`) ואז `A11Y_BASE_URL=http://localhost:3000 npm run a11y`. הסקריפט (`scripts/a11y.mjs`, ‏axe-core ב-Playwright) בודק את כל העמודים והמצבים העיקריים בעברית ובאנגלית, במצב בהיר וכהה, ברוחב 1280 ו-320 פיקסלים, ונכשל על כל הפרה. אחרי כל שינוי בממשק מריצים אותו שוב ומעדכנים את תאריך הבדיקה בהצהרה. פירוט ב-`docs/design-spec.md`, בסעיף Accessibility conformance.
 
 ## פריסה
 

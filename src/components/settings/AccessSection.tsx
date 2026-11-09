@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, type ReactNode } from 'react';
-import { he } from '@/lib/i18n/he';
+import { useLangAttr, useT } from '@/lib/i18n/client';
 import { forgetAllKeys, setKey, setRemember, useKeys } from '@/lib/keyStore';
 import { errorCode } from '@/lib/runAnalysis';
 import { DEFAULT_MODELS, MODEL_SUGGESTIONS, hasKey, useSettings } from '@/lib/store';
@@ -23,6 +23,7 @@ const CUSTOM = '__custom__';
 
 /** Masked key input with a show/hide toggle. Reads and writes the browser key store, never settings. */
 export function KeyField({ provider, field }: { provider: ProviderId; field: FieldControlProps }) {
+  const t = useT();
   const { keys } = useKeys();
   const [show, setShow] = useState(false);
   return (
@@ -37,11 +38,11 @@ export function KeyField({ provider, field }: { provider: ProviderId; field: Fie
         spellCheck={false}
         value={keys[provider] || ''}
         onChange={(e) => setKey(provider, e.target.value)}
-        placeholder={he.settings.apiKeyPlaceholder}
+        placeholder={t.settings.apiKeyPlaceholder}
         className="min-w-0 flex-1 font-mono text-sm"
       />
       <Button onClick={() => setShow((v) => !v)} aria-controls={field.id}>
-        {show ? he.settings.hideKey : he.settings.showKey}
+        {show ? t.settings.hideKey : t.settings.showKey}
       </Button>
     </div>
   );
@@ -49,16 +50,19 @@ export function KeyField({ provider, field }: { provider: ProviderId; field: Fie
 
 /** External link that says (to screen readers too) that it opens a new tab. */
 function NewTabLink({ href, children }: { href: string; children: ReactNode }) {
+  const t = useT();
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-semibold text-accent underline underline-offset-4 hover:no-underline">
       {children}
       <IconExternal width={16} height={16} className="shrink-0 rtl:-scale-x-100" />
-      <span className="sr-only">{he.settings.newTab}</span>
+      <span className="sr-only">{t.settings.newTab}</span>
     </a>
   );
 }
 
 function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: { id: string; name: string }[] }) {
+  const t = useT();
+  const langAttr = useLangAttr();
   const [s, update] = useSettings();
   const model = s.models[provider];
   const suggested = MODEL_SUGGESTIONS[provider];
@@ -67,11 +71,11 @@ function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: {
   const [customPicked, setCustomPicked] = useState(false);
   const custom = customPicked || !known;
   const setModel = (m: string) => update({ models: { ...s.models, [provider]: m } });
-  const label = (id: string) => (id === DEFAULT_MODELS[provider] ? he.settings.modelDefaultMark.replace('{model}', id) : id);
+  const label = (id: string) => (id === DEFAULT_MODELS[provider] ? t.settings.modelDefaultMark.replace('{model}', id) : id);
 
   return (
     <div className="space-y-3">
-      <Field label={he.settings.model}>
+      <Field label={t.settings.model}>
         {(f) => (
           <Select
             {...f}
@@ -86,7 +90,7 @@ function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: {
             }}
             className="w-full font-mono text-sm"
           >
-            <optgroup label={he.settings.modelSuggested}>
+            <optgroup label={t.settings.modelSuggested}>
               {suggested.map((m) => (
                 <option key={m} value={m}>
                   {label(m)}
@@ -94,21 +98,21 @@ function ModelPicker({ provider, orModels }: { provider: ProviderId; orModels: {
               ))}
             </optgroup>
             {catalog.length > 0 && (
-              <optgroup label={he.settings.modelAllOpenRouter}>
+              <optgroup label={t.settings.modelAllOpenRouter}>
                 {catalog.map((m) => (
-                  <option key={m.id} value={m.id} lang="en">
+                  <option key={m.id} value={m.id} lang={langAttr('en')}>
                     {m.id}
                   </option>
                 ))}
               </optgroup>
             )}
-            <option value={CUSTOM}>{he.settings.modelCustom}</option>
+            <option value={CUSTOM}>{t.settings.modelCustom}</option>
           </Select>
         )}
       </Field>
       {custom && (
-        <Field label={he.settings.modelCustomLabel} hint={he.settings.modelCustomHint.replace('{example}', PROVIDERS.find((p) => p.id === provider)!.example)}>
-          {(f) => <Input {...f} dir="ltr" lang="en" spellCheck={false} autoComplete="off" value={model} onChange={(e) => setModel(e.target.value.trim())} className="w-full font-mono text-sm" />}
+        <Field label={t.settings.modelCustomLabel} hint={t.settings.modelCustomHint.replace('{example}', PROVIDERS.find((p) => p.id === provider)!.example)}>
+          {(f) => <Input {...f} dir="ltr" lang={langAttr('en')} spellCheck={false} autoComplete="off" value={model} onChange={(e) => setModel(e.target.value.trim())} className="w-full font-mono text-sm" />}
         </Field>
       )}
     </div>
@@ -119,18 +123,20 @@ type TestState = { state: 'idle' | 'testing' | 'ok' | 'fail'; msg?: string; deta
 
 /** `onKeyError` reports a problem with the key itself (missing / rejected) so the key field can show it. */
 function TestConnection({ provider, onKeyError }: { provider: ProviderId; onKeyError: (msg: string | null) => void }) {
+  const t = useT();
+  const langAttr = useLangAttr();
   const [s] = useSettings();
   const { keys } = useKeys();
   const toast = useToast();
   const [test, setTest] = useState<TestState>({ state: 'idle' });
-  const name = he.settings.providers[provider];
+  const name = t.settings.providers[provider];
 
   async function run() {
     if (test.state === 'testing') return;
     if (!keys[provider]) {
-      setTest({ state: 'fail', msg: he.settings.noKeyToTest });
-      onKeyError(he.settings.noKeyToTest);
-      toast(he.settings.noKeyToTest, { tone: 'danger' });
+      setTest({ state: 'fail', msg: t.settings.noKeyToTest });
+      onKeyError(t.settings.noKeyToTest);
+      toast(t.settings.noKeyToTest, { tone: 'danger' });
       return;
     }
     setTest({ state: 'testing' });
@@ -145,17 +151,17 @@ function TestConnection({ provider, onKeyError }: { provider: ProviderId; onKeyE
       if (data.ok) {
         setTest({ state: 'ok' });
         onKeyError(null);
-        toast(`${he.settings.testSuccess} · ${name}`, { tone: 'success' });
+        toast(`${t.settings.testSuccess} · ${name}`, { tone: 'success' });
       } else {
         const code = errorCode(data.code || data.error || '');
-        const msg = he.errors[code];
+        const msg = t.errors[code];
         setTest({ state: 'fail', msg, detail: data.error });
         onKeyError(code === 'invalidKey' || code === 'missingKey' ? msg : null);
-        toast(he.settings.testFailed.replace('{reason}', msg), { tone: 'danger' });
+        toast(t.settings.testFailed.replace('{reason}', msg), { tone: 'danger' });
       }
     } catch {
-      setTest({ state: 'fail', msg: he.errors.network });
-      toast(he.settings.testFailed.replace('{reason}', he.errors.network), { tone: 'danger' });
+      setTest({ state: 'fail', msg: t.errors.network });
+      toast(t.settings.testFailed.replace('{reason}', t.errors.network), { tone: 'danger' });
     }
   }
 
@@ -163,18 +169,18 @@ function TestConnection({ provider, onKeyError }: { provider: ProviderId; onKeyE
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={run} aria-disabled={test.state === 'testing' || undefined}>
-          {test.state === 'testing' ? he.settings.testing : he.settings.testConnection}
+          {test.state === 'testing' ? t.settings.testing : t.settings.testConnection}
         </Button>
         {/* Visual status; screen readers get the same message from the toast region. */}
         <p className="min-w-0 flex-1 text-sm">
-          {test.state === 'ok' && <span className="font-semibold text-success">{he.settings.testSuccess}</span>}
-          {test.state === 'fail' && <span className="font-semibold text-danger">{he.settings.testFailed.replace('{reason}', test.msg || '')}</span>}
+          {test.state === 'ok' && <span className="font-semibold text-success">{t.settings.testSuccess}</span>}
+          {test.state === 'fail' && <span className="font-semibold text-danger">{t.settings.testFailed.replace('{reason}', test.msg || '')}</span>}
         </p>
       </div>
       {test.state === 'fail' && test.detail && (
         <details className="text-caption text-muted">
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{he.settings.testFailedDetails}</summary>
-          <p dir="ltr" lang="en" className="mt-1 break-all font-mono text-xs">
+          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{t.settings.testFailedDetails}</summary>
+          <p dir="ltr" lang={langAttr('en')} className="mt-1 break-all font-mono text-xs">
             {test.detail.slice(0, 300)}
           </p>
         </details>
@@ -185,6 +191,7 @@ function TestConnection({ provider, onKeyError }: { provider: ProviderId; onKeyE
 
 /** Pro state in Settings → Access: active subscription, or a compact upsell to /pricing. */
 function SubscriptionStatus() {
+  const t = useT();
   const account = useAccount();
   const [s] = useSettings();
   const { keys } = useKeys();
@@ -193,13 +200,13 @@ function SubscriptionStatus() {
     return (
       <div data-slot="subscription" className="rounded-lg border border-border border-s-4 border-s-success bg-surface p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-bold">{he.settings.proTitle}</h3>
-          <span className="rounded-full border border-success px-2 text-xs font-semibold text-success">{he.settings.proActiveBadge}</span>
+          <h3 className="font-bold">{t.settings.proTitle}</h3>
+          <span className="rounded-full border border-success px-2 text-xs font-semibold text-success">{t.settings.proActiveBadge}</span>
         </div>
-        <p className="mt-1 text-sm">{he.settings.proActive}</p>
-        {hasKey(s, keys) && <p className="mt-1 text-caption text-muted">{he.settings.proActiveKeyNote}</p>}
+        <p className="mt-1 text-sm">{t.settings.proActive}</p>
+        {hasKey(s, keys) && <p className="mt-1 text-caption text-muted">{t.settings.proActiveKeyNote}</p>}
         <ButtonLink href="/account" variant="link" className="mt-1">
-          {he.settings.proManage}
+          {t.settings.proManage}
         </ButtonLink>
       </div>
     );
@@ -207,17 +214,19 @@ function SubscriptionStatus() {
   return (
     <div data-slot="subscription" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border-strong bg-surface-2 p-4">
       <div className="min-w-0 flex-1">
-        <h3 className="font-bold">{he.settings.proTitle}</h3>
-        <p className="mt-0.5 text-sm text-muted">{he.settings.proBody}</p>
+        <h3 className="font-bold">{t.settings.proTitle}</h3>
+        <p className="mt-0.5 text-sm text-muted">{t.settings.proBody}</p>
       </div>
       <ButtonLink href="/pricing" variant="secondary">
-        {he.settings.proLink}
+        {t.settings.proLink}
       </ButtonLink>
     </div>
   );
 }
 
 export function AccessSection() {
+  const t = useT();
+  const langAttr = useLangAttr();
   const [s, update] = useSettings();
   const { keys, remember } = useKeys();
   const toast = useToast();
@@ -244,12 +253,12 @@ export function AccessSection() {
 
       <div className="space-y-4">
         <header>
-          <h3 className="font-bold">{he.settings.byokTitle}</h3>
-          <p className="mt-0.5 text-sm text-muted">{he.settings.byokIntro}</p>
+          <h3 className="font-bold">{t.settings.byokTitle}</h3>
+          <p className="mt-0.5 text-sm text-muted">{t.settings.byokIntro}</p>
         </header>
 
         <SegmentedControl<ProviderId>
-          legend={he.settings.chooseProvider}
+          legend={t.settings.chooseProvider}
           variant="cards"
           columns={3}
           value={p}
@@ -258,42 +267,42 @@ export function AccessSection() {
             value: pr.id,
             label: (
               <>
-                <span lang="en">{he.settings.providers[pr.id]}</span>
-                {keys[pr.id] && <span className="rounded-full border border-success px-2 text-micro text-success">{he.settings.connected}</span>}
+                <span lang={langAttr('en')}>{t.settings.providers[pr.id]}</span>
+                {keys[pr.id] && <span className="rounded-full border border-success px-2 text-micro text-success">{t.settings.connected}</span>}
               </>
             ),
-            description: he.settings.providerNotes[pr.id],
+            description: t.settings.providerNotes[pr.id],
           }))}
         />
 
         <div role="group" aria-labelledby="provider-panel-title" className="space-y-4 rounded-lg border border-border-strong p-4">
           <div className="flex flex-wrap items-center justify-between gap-x-4">
-            <h4 id="provider-panel-title" className="text-h2 font-bold" lang="en">
-              {he.settings.providers[p]}
+            <h4 id="provider-panel-title" className="text-h2 font-bold" lang={langAttr('en')}>
+              {t.settings.providers[p]}
             </h4>
-            <NewTabLink href={info.keyUrl}>{he.settings.getKey}</NewTabLink>
+            <NewTabLink href={info.keyUrl}>{t.settings.getKey}</NewTabLink>
           </div>
 
           <Field
             key={p}
             label={
               <>
-                {he.settings.apiKey} · <bdi lang="en">{he.settings.providers[p]}</bdi>
+                {t.settings.apiKey} · <bdi lang={langAttr('en')}>{t.settings.providers[p]}</bdi>
               </>
             }
-            hint={keys[p] ? `${remember ? he.settings.keyOnDevice : he.settings.keyInSession} ${he.settings.keyStorageNote}` : he.settings.keyStorageNote}
+            hint={keys[p] ? `${remember ? t.settings.keyOnDevice : t.settings.keyInSession} ${t.settings.keyStorageNote}` : t.settings.keyStorageNote}
             error={keyError}
           >
             {(f) => <KeyField provider={p} field={f} />}
           </Field>
 
           <Checkbox
-            label={he.settings.rememberKey}
-            hint={he.settings.rememberHint}
+            label={t.settings.rememberKey}
+            hint={t.settings.rememberHint}
             checked={remember}
             onChange={(v) => {
               setRemember(v);
-              toast(v ? he.settings.rememberOn : he.settings.rememberOff);
+              toast(v ? t.settings.rememberOn : t.settings.rememberOff);
             }}
           />
 
@@ -305,13 +314,13 @@ export function AccessSection() {
             <div className="space-y-1 border-t border-border pt-4">
               <Button
                 disabled={!CHATGPT_SIGNIN}
-                onClick={() => toast(he.settings.chatgptNotImplemented)}
+                onClick={() => toast(t.settings.chatgptNotImplemented)}
                 aria-describedby="chatgpt-note"
               >
-                {he.settings.chatgptButton}
+                {t.settings.chatgptButton}
               </Button>
               <p id="chatgpt-note" className="text-caption text-muted">
-                {he.settings.chatgptNote}
+                {t.settings.chatgptNote}
               </p>
             </div>
           )}
@@ -320,15 +329,15 @@ export function AccessSection() {
         <div className="flex items-start gap-3 rounded-lg border border-border border-s-4 border-s-success bg-surface p-3">
           <IconShield className="mt-0.5 shrink-0 text-success" />
           <div className="text-sm">
-            <p className="font-bold">{he.settings.privacyTitle}</p>
-            <p>{he.settings.privacyNote}</p>
-            <p className="mt-1 text-caption text-muted">{he.settings.privacyMore}</p>
+            <p className="font-bold">{t.settings.privacyTitle}</p>
+            <p>{t.settings.privacyNote}</p>
+            <p className="mt-1 text-caption text-muted">{t.settings.privacyMore}</p>
           </div>
         </div>
 
         <div>
           <Button variant="secondary" icon={<IconTrash width={18} height={18} />} className="text-danger" onClick={() => setConfirmForget(true)} disabled={!anyKey && !remember}>
-            {he.settings.forgetAll}
+            {t.settings.forgetAll}
           </Button>
         </div>
       </div>
@@ -336,27 +345,27 @@ export function AccessSection() {
       <div className="flex items-start gap-3 rounded-lg bg-surface-2 p-3">
         <IconInfo className="mt-0.5 shrink-0 text-muted" />
         <div className="text-sm">
-          <h3 className="font-bold">{he.settings.localTitle}</h3>
-          <p className="text-muted">{he.settings.localBody}</p>
+          <h3 className="font-bold">{t.settings.localTitle}</h3>
+          <p className="text-muted">{t.settings.localBody}</p>
         </div>
       </div>
 
       <details className="rounded-lg border border-border px-3 text-caption text-muted">
-        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{he.settings.chatPlanQ}</summary>
-        <p className="pb-3">{he.settings.chatPlanA}</p>
+        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{t.settings.chatPlanQ}</summary>
+        <p className="pb-3">{t.settings.chatPlanA}</p>
       </details>
 
       <ConfirmDialog
         open={confirmForget}
-        title={he.settings.forgetTitle}
-        body={he.settings.forgetBody}
-        confirmLabel={he.settings.forgetAll}
+        title={t.settings.forgetTitle}
+        body={t.settings.forgetBody}
+        confirmLabel={t.settings.forgetAll}
         danger
         onCancel={() => setConfirmForget(false)}
         onConfirm={() => {
           forgetAllKeys();
           setConfirmForget(false);
-          toast(he.settings.forgetDone, { tone: 'success' });
+          toast(t.settings.forgetDone, { tone: 'success' });
         }}
       />
     </>

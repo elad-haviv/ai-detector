@@ -2,7 +2,8 @@
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { refreshAccount, signInUrl, useAccount } from '@/lib/account';
-import { he } from '@/lib/i18n/he';
+import { fmt } from '@/lib/i18n';
+import { useLangAttr, useT } from '@/lib/i18n/client';
 import { openCheckout } from '@/lib/paddle';
 import { IconCheck } from './icons';
 import { Button, ButtonLink, Card, SegmentedControl, buttonClass, useToast } from './ui';
@@ -20,6 +21,8 @@ export interface PricingCheckout {
 type Period = 'monthly' | 'yearly';
 
 export function PricingView({ checkout, limit }: { checkout: PricingCheckout | null; limit: number }) {
+  const t = useT();
+  const langAttr = useLangAttr();
   const account = useAccount();
   const params = useSearchParams();
   const toast = useToast();
@@ -40,11 +43,11 @@ export function PricingView({ checkout, limit }: { checkout: PricingCheckout | n
         onCompleted: () => void refreshAccount(),
       });
     } catch {
-      toast(he.pricing.checkoutError, { tone: 'danger' });
+      toast(t.pricing.checkoutError, { tone: 'danger' });
     } finally {
       setOpening(false);
     }
-  }, [checkout, account.email, opening, period, toast]);
+  }, [checkout, account.email, opening, period, toast, t]);
 
   // Back from "sign in and continue to payment": open the checkout once, as the button promised.
   useEffect(() => {
@@ -58,10 +61,10 @@ export function PricingView({ checkout, limit }: { checkout: PricingCheckout | n
     cta = (
       <div className="space-y-1">
         <button type="button" disabled aria-describedby="pro-soon" className={buttonClass({ variant: 'primary', size: 'lg', className: 'w-full' })}>
-          {he.pricing.ctaSoon}
+          {t.pricing.ctaSoon}
         </button>
         <p id="pro-soon" className="text-caption text-muted">
-          {he.pricing.soonNote}
+          {t.pricing.soonNote}
         </p>
       </div>
     );
@@ -70,42 +73,42 @@ export function PricingView({ checkout, limit }: { checkout: PricingCheckout | n
   } else if (account.plan === 'pro') {
     cta = (
       <ButtonLink href="/account" variant="primary" size="lg" className="w-full">
-        {he.pricing.ctaManage}
+        {t.pricing.ctaManage}
       </ButtonLink>
     );
   } else if (!account.signedIn) {
     cta = (
       <div className="space-y-1">
         <a href={signInUrl(`/pricing?checkout=1&period=${period}`)} aria-describedby="pro-cookie" className={buttonClass({ variant: 'primary', size: 'lg', className: 'w-full' })}>
-          {he.pricing.ctaSignIn}
+          {t.pricing.ctaSignIn}
         </a>
         <p id="pro-cookie" className="text-caption text-muted">
-          {he.account.googleCookieNote}
+          {t.account.googleCookieNote}
         </p>
       </div>
     );
   } else {
     cta = (
       <Button variant="primary" size="lg" className="w-full" onClick={startCheckout} aria-disabled={opening || undefined}>
-        {opening ? he.pricing.opening : he.pricing.ctaUpgrade}
+        {opening ? t.pricing.opening : t.pricing.ctaUpgrade}
       </Button>
     );
   }
 
   return (
     <div className="mx-auto max-w-[960px] px-4 py-6 md:py-10">
-      <h1 className="text-title font-bold">{he.pricing.title}</h1>
-      <p className="mt-1 text-muted">{he.pricing.intro}</p>
+      <h1 className="text-title font-bold">{t.pricing.title}</h1>
+      <p className="mt-1 text-muted">{t.pricing.intro}</p>
 
       {yearly && (
         <div className="mt-4 max-w-xs">
           <SegmentedControl<Period>
-            legend={he.pricing.period}
+            legend={t.pricing.period}
             value={period}
             onChange={setPeriod}
             options={[
-              { value: 'monthly', label: he.pricing.monthly },
-              { value: 'yearly', label: he.pricing.yearly },
+              { value: 'monthly', label: t.pricing.monthly },
+              { value: 'yearly', label: t.pricing.yearly },
             ]}
           />
         </div>
@@ -115,31 +118,31 @@ export function PricingView({ checkout, limit }: { checkout: PricingCheckout | n
         <li>
           <Card padding="lg" className="flex h-full flex-col" aria-labelledby="plan-free">
             <h2 id="plan-free" className="text-h2 font-bold">
-              {he.pricing.freeName}
+              {t.pricing.freeName}
             </h2>
             <p className="mt-2">
-              <span className="text-title font-bold">{he.pricing.freePrice}</span>
+              <span className="text-title font-bold">{t.pricing.freePrice}</span>
             </p>
-            <p className="text-caption text-muted">{he.pricing.freePriceNote}</p>
-            <Features items={he.pricing.freeFeatures} />
+            <p className="text-caption text-muted">{t.pricing.freePriceNote}</p>
+            <Features items={t.pricing.freeFeatures} />
             <ButtonLink href="/settings#access" size="lg" className="mt-auto w-full">
-              {he.pricing.freeCta}
+              {t.pricing.freeCta}
             </ButtonLink>
           </Card>
         </li>
         <li>
           <Card padding="lg" className="flex h-full flex-col border-accent ring-1 ring-accent" aria-labelledby="plan-pro">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="plan-pro" className="text-h2 font-bold" lang="en">
-                {he.pricing.proName}
+              <h2 id="plan-pro" className="text-h2 font-bold" lang={langAttr('en')}>
+                {t.pricing.proName}
               </h2>
-              <span className="rounded-full bg-accent-soft px-2 text-caption font-semibold text-accent">{he.pricing.proRecommended}</span>
+              <span className="rounded-full bg-accent-soft px-2 text-caption font-semibold text-accent">{t.pricing.proRecommended}</span>
             </div>
             <p className="mt-2">
-              <span className="text-title font-bold">{priceLabel || he.pricing.proPriceFallback}</span>
+              <span className="text-title font-bold">{priceLabel || t.pricing.proPriceFallback}</span>
             </p>
-            <p className="text-caption text-muted">{he.pricing.paddleNote}</p>
-            <Features items={he.pricing.proFeatures.map((f) => f.replace('{limit}', String(limit)))} />
+            <p className="text-caption text-muted">{t.pricing.paddleNote}</p>
+            <Features items={t.pricing.proFeatures.map((f) => fmt(f, { limit }))} />
             <div className="mt-auto">{cta}</div>
           </Card>
         </li>
@@ -147,10 +150,10 @@ export function PricingView({ checkout, limit }: { checkout: PricingCheckout | n
 
       <section aria-labelledby="faq-title" className="mt-10">
         <h2 id="faq-title" className="text-h2 font-bold">
-          {he.pricing.faqTitle}
+          {t.pricing.faqTitle}
         </h2>
         <div className="mt-3 space-y-2">
-          {he.pricing.faq.map((f) => (
+          {t.pricing.faq.map((f) => (
             <details key={f.q} className="rounded-lg border border-border bg-surface px-4">
               <summary className="flex min-h-12 cursor-pointer items-center font-semibold">{f.q}</summary>
               <p className="pb-4 text-sm leading-relaxed">{f.a}</p>
@@ -165,10 +168,10 @@ export function PricingView({ checkout, limit }: { checkout: PricingCheckout | n
 function Features({ items }: { items: readonly string[] }) {
   return (
     <ul className="my-5 space-y-2 text-sm">
-      {items.map((t) => (
-        <li key={t} className="flex items-start gap-2">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2">
           <IconCheck width={18} height={18} className="mt-0.5 shrink-0 text-success" />
-          <span>{t}</span>
+          <span>{item}</span>
         </li>
       ))}
     </ul>

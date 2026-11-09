@@ -369,7 +369,7 @@ html {
   }
 }
 
-/* Disclosure marker that survives display:flex on <summary> (RTL: points to the inline end, down when open).
+/* Disclosure marker that survives display:flex on <summary> (RTL: points left, down when open).
    The empty alt text keeps screen readers from announcing the glyph. */
 summary {
   list-style: none;
@@ -386,6 +386,17 @@ summary::before {
 }
 details[open] > summary::before {
   transform: rotate(-90deg);
+}
+/* LTR (English UI): the marker points right and turns down when open. */
+html[dir="ltr"] summary::before {
+  content: "▸" / "";
+}
+html[dir="ltr"] details[open] > summary::before {
+  transform: rotate(90deg);
+}
+/* Icons that imply direction are drawn for RTL and mirrored in LTR. */
+html[dir="ltr"] .dir-flip {
+  transform: scaleX(-1);
 }
 
 input[type="range"] {

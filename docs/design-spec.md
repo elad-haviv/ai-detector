@@ -2,7 +2,9 @@
 
 Tone: calm, scholarly, trustworthy. It should feel like a careful reader's margin notes, not a security scanner. Use paper-like surfaces, ink-blue accents and warm highlights. No neon, no glow, no red alarm states for normal findings.
 
-UI language: Hebrew, `<html lang="he" dir="rtl">`. Analyzed text: every paragraph/sentence container gets `dir="auto"`. Use logical CSS properties throughout (`ps-*`, `me-*`, `start-*`, `border-s`), never left/right.
+Product name: **Penprint** in English, **טביעת עט** in Hebrew (M5; formerly "Kulmus").
+
+UI language: Hebrew (`<html lang="he" dir="rtl">`) or English (`<html lang="en" dir="ltr">`), see §14. Analyzed text: every paragraph/sentence container gets `dir="auto"`. Use logical CSS properties throughout (`ps-*`, `me-*`, `start-*`, `border-s`), never left/right. Tables and descriptions below speak of the RTL layout; LTR mirrors it.
 
 ---
 
@@ -18,7 +20,7 @@ UI language: Hebrew, `<html lang="he" dir="rtl">`. Analyzed text: every paragrap
 /accessibility  Accessibility statement (הצהרת נגישות, LegalPage + `accessibilityDoc` in legal.he.ts)
 ```
 
-**AppShell** (`src/components/AppShell.tsx`): skip link "דילוג לתוכן הראשי" → `<main id="main">`; `<header>` with logo, desktop `<nav aria-label="ניווט ראשי">` (`aria-current="page"` on the active link), and the **header status slot** (`data-slot="header-status"`): the access chip (`AccessChip`: "המפתח שלך · <provider>" when the chosen provider has a key in the browser key store, "Pro" for a subscriber, else "כללים מקומיים בלבד"; links to `/settings#access`) and the account button (`AccountButton`: avatar initial → /account, or "התחברות"). The chip follows `llmMode()`: BYOK key wins, then Pro, then local. `<footer>` with privacy · terms · accessibility statement links and a "הגדרות עוגיות" button that dispatches `kulmus:open-cookie-settings` (`CookieConsent` calls `preventDefault()` and opens its Dialog; the first-visit banner is a non-modal bottom `role=region` above the mobile tab bar, and the page gets matching bottom padding). Mobile (<768px): bottom tab bar with the same three entries; the footer pads for it. The workspace has three states: **Input → Analyzing → Results (editable)**.
+**AppShell** (`src/components/AppShell.tsx`): skip link "דילוג לתוכן הראשי" → `<main id="main">`; `<header>` with logo, desktop `<nav aria-label="ניווט ראשי">` (`aria-current="page"` on the active link), and the **header status slot** (`data-slot="header-status"`): the access chip (`AccessChip`: "המפתח שלך · <provider>" when the chosen provider has a key in the browser key store, "Pro" for a subscriber, else "כללים מקומיים בלבד"; links to `/settings#access`) and the account button (`AccountButton`: avatar initial → /account, or "התחברות"). The chip follows `llmMode()`: BYOK key wins, then Pro, then local. `<footer>` with privacy · terms · accessibility statement links and a "הגדרות עוגיות" button that dispatches `penprint:open-cookie-settings` (`CookieConsent` calls `preventDefault()` and opens its Dialog; the first-visit banner is a non-modal bottom `role=region` above the mobile tab bar, and the page gets matching bottom padding). Mobile (<768px): bottom tab bar with the same three entries; the footer pads for it. The workspace has three states: **Input → Analyzing → Results (editable)**.
 
 ## 2. Layouts
 
@@ -126,7 +128,7 @@ Screen components: **InputPanel** (3-step guide, local-only notice, drop zone + 
 
 ## 8. States
 
-- **Empty (first run, no key, not Pro)**: a calm card titled "הדביקו טקסט או העלו קובץ". Above it the **onboarding chooser** (`OnboardingChooser`): מנוי Pro → /pricing · יש לי מפתח API → /settings#access · לנסות עם כללים מקומיים (sets `kulmus:onboarded:v1`). Once dismissed it collapses into the one-line local-only notice; never two banners. Heuristic-only analysis still works and is labelled "ניתוח מקומי בלבד".
+- **Empty (first run, no key, not Pro)**: a calm card titled "הדביקו טקסט או העלו קובץ". Above it the **onboarding chooser** (`OnboardingChooser`): מנוי Pro → /pricing · יש לי מפתח API → /settings#access · לנסות עם כללים מקומיים (sets `penprint:onboarded:v1`). Once dismissed it collapses into the one-line local-only notice; never two banners. Heuristic-only analysis still works and is labelled "ניתוח מקומי בלבד".
 - **Loading**: per-chunk progress; skeleton lines on the document; the score shows "—" until ≥1 chunk finishes, then updates provisionally ("זמני").
 - **Partial failure**: failed chunks get a neutral grey hatched background + "נכשל · נסה שוב". The score is computed from the done chunks, with a notice.
 - **Errors**: invalid key (401) → link to Settings; rate limit → auto-retry countdown; network → retry; unsupported/oversized/scanned PDF with no text → explain + suggest pasting. Errors appear inline near the source, not as modal walls. Messages are in Hebrew, with the provider's message collapsible.
@@ -176,7 +178,7 @@ Shortcuts are disabled while focus is in an input or contenteditable (except Esc
 
 Israeli law (Service Accessibility Adjustments Regulations 2013, reg. 35) requires ת״י 5568 level AA (WCAG 2.0 AA); we test against WCAG 2.1 AA. No overlay or toolbar widgets: accessibility lives in the components. The statement is `/accessibility`; update its dates and the coordinator's details whenever they change.
 
-**Automated audit.** `npm run a11y` (`scripts/a11y.mjs`, `@axe-core/playwright`) audits an already running app at `A11Y_BASE_URL` (default `http://localhost:3000`): every route plus results with a selected sentence, the mobile summary dialog, consent banner, cookie-settings dialog, history with items and its delete confirm, settings with a provider selected and with a key error, account signed out (and signed in when `A11Y_SESSION_TOKEN` holds a signed `kulmus_session`). Light and dark × 1280px and 320px, tags `wcag2a wcag2aa wcag21a wcag21aa`, plus a no-horizontal-scroll check at 320px. Exit 1 on any violation; `A11Y_ONLY=<state>` narrows the run, `A11Y_JSON=<file>` saves the report. It must stay at zero violations.
+**Automated audit.** `npm run a11y` (`scripts/a11y.mjs`, `@axe-core/playwright`) audits an already running app at `A11Y_BASE_URL` (default `http://localhost:3000`) in both languages (`penprint_lang` cookie; `A11Y_LOCALES=he|en` narrows): every route plus results with a selected sentence, the mobile summary dialog, consent banner, cookie-settings dialog, history with items and its delete confirm, settings with a provider selected and with a key error, account signed out (and signed in when `A11Y_SESSION_TOKEN` holds a signed `penprint_session`). Light and dark × 1280px and 320px, plus a check that `<html lang dir>` match the language, tags `wcag2a wcag2aa wcag21a wcag21aa`, plus a no-horizontal-scroll check at 320px. Exit 1 on any violation; `A11Y_ONLY=<state>` narrows the run, `A11Y_JSON=<file>` saves the report. It must stay at zero violations.
 
 **Manual checklist** (axe cannot see these; re-check when a screen changes):
 - Keyboard: Tab order follows the visual RTL order; no traps; Esc closes every dialog/sheet and focus returns to the opener (the mobile sentence sheet returns it to the sentence; prev/next inside the inspector keep focus on that button). After deleting a history item focus goes to the next item, else the heading, and a toast announces it.
@@ -184,7 +186,40 @@ Israeli law (Service Accessibility Adjustments Regulations 2013, reg. 35) requir
 - Reflow: no horizontal scroll at 320px, at 640px (200% zoom) and at 320×256 (400% zoom: sticky bars become static below 30rem height via `.unstick-short`). Text-size "larger" and the WCAG 1.4.12 text-spacing override clip nothing.
 - Contrast: text ≥4.5:1, focus ring, control borders, highlight underlines ≥3:1 in both themes (see §6). No information is conveyed by opacity or colour alone.
 - Status messages go through the toast `role=status` region or a local `aria-live` region (analysis progress, selected sentence, test connection, copy/apply/ignore, delete); form errors use `Field`'s `error` (aria-invalid + aria-describedby), including the API-key field after a failed test.
-- Language: `lang="en"` on English-only fragments (provider and plan names, model ids, provider error text); `dir="auto"` on user text. Every route has a unique Hebrew `<title>`; the results view sets one with the document title.
+- Language: fragments in the other language carry `lang` (on the Hebrew UI: provider and plan names, model ids, provider error text; on the English UI: the Hebrew option labels), via `useLangAttr()` so the attribute is dropped when it matches the page; `dir="auto"` on user text. Every route has a unique `<title>` in the UI language; the results view sets one with the document title.
 - One `h1` per page, no skipped heading levels, landmarks labelled.
 - Targets ≥24×24px (most 44×44); `prefers-reduced-motion` disables animation and smooth scroll; nothing flashes.
 - Not automatable: real screen-reader passes (NVDA + Firefox/Chrome on Windows, VoiceOver on macOS/iOS), Windows high-contrast mode, and speech input. Record the results in the statement.
+
+## 14. Internationalization (M5)
+
+**Languages.** Hebrew (`he`, RTL, source language) and English (`en`, LTR). No i18n library: typed dictionaries in `src/lib/i18n/`.
+
+| File | Role |
+|---|---|
+| `he.ts` | Hebrew UI strings, `as const`. Exports `Dict`, a deep-widened `typeof he`. |
+| `en.ts` | `export const en: Dict`: a missing or extra key is a compile error. |
+| `legal.he.ts` / `legal.en.ts` | Privacy, terms and accessibility statement as `LegalDoc` (same section ids, so `/privacy#cookies` works in both). Server-only via `getLegal(locale)` in `legal.ts`. |
+| `config.ts` | `Locale`, `LANG_COOKIE`, `resolveLocale()`, `dirOf()`, `intlLocale()`, `fmt()`. No React/Next imports (safe in scripts). |
+| `server.ts` | `getLocale()`, `getT()`, `pageTitle(pick)` for server components and `generateMetadata`. |
+| `client.tsx` | `LocaleProvider` (root layout), `useT()`, `useLocale()`, `useSetLocale()`, `useLangAttr()`, `currentLocale()`. |
+| `src/lib/patterns/catalog.en.ts` | English description + fix for every pattern; `patternText(p, locale)` picks name/description/fix. |
+
+**Adding a string.** Add the key to `he.ts`, then to `en.ts` (TypeScript forces it). Read it with `const t = useT(); t.section.key` in client components, `const t = await getT()` in server components. Placeholders are `{name}`, filled with `fmt(t.x.y, { name })`; `npm run check:m3` asserts that both languages use the same placeholders and keys. Never hard-code UI text in components; numbers and dates use `intlLocale(locale)`.
+
+**Locale resolution** (server, every request): (1) `penprint_lang` cookie if it is `he` or `en`; (2) else `Accept-Language`: tags sorted by q-value, the first whose primary subtag is `he`/`iw` (→ Hebrew) or `en` (→ English) wins; (3) else Hebrew. Decision: the product's home market is Israeli academia, so a visitor whose browser names neither language gets Hebrew; anyone whose browser prefers English over Hebrew gets English. The root layout renders `<html lang dir>` from it, so the first paint is right with no flash, and all routes are dynamic.
+
+**Switching.** The header `LanguageSwitch` (shows the other language in that language, `lang` on the button, accessible name "Switch language to English" / "החלפת שפה: עברית"; icon-only below 400px) and Settings → Display → "Interface language · Language". Both call `useSetLocale()`: write the cookie (12 months, `SameSite=Lax`), flip `<html lang dir>` at once, `router.refresh()` so server components and metadata re-render; client state (an open analysis) survives. Nothing is stored server-side. The cookie is essential/preference and is listed in the privacy cookie table and consent text.
+
+**Explanation language.** `settings.explanationLanguage` is `'ui'` (default: follow the interface), `'he'`, `'en'` or `'auto'` (the analyzed text's language). Rewrites always stay in the sentence's language. Migration: a stored `'he'` (the old default) becomes `'ui'`.
+
+**Direction rules.**
+- Logical properties only; the three-column results layout, sheets, dialogs and toasts mirror automatically.
+- Icons that point (chevrons) are drawn for RTL and get `.dir-flip` (mirrored under `html[dir="ltr"]`); the external-link icon uses `rtl:-scale-x-100`. The `<summary>` marker is `◂` (RTL) / `▸` (LTR), turning down when open.
+- User text and model output: `dir="auto"`. Empty inputs use the UI direction for the placeholder.
+- Fonts: Assistant covers Latin for the English UI; the document stack falls back to Source Serif 4 for Latin.
+
+**Integrations.** Paddle checkout `locale` = UI language unless `NEXT_PUBLIC_PADDLE_LOCALE` is set; English price label from `NEXT_PUBLIC_PRO_PRICE_LABEL_EN`. Google sign-in passes `hl=<locale>`.
+
+**Rename storage migration.** `src/lib/storageMigration.ts` moves `kulmus:*` localStorage/sessionStorage keys to `penprint:*` once (copy if the new key is empty, then delete the old one) before the stores first read; the pre-paint theme script also reads the old settings key. IndexedDB `penprint-files` falls back to the legacy file database on a miss and moves the file. Cookies from the old name are ignored.
+

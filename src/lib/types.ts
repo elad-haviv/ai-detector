@@ -133,7 +133,8 @@ export interface Settings {
   useDecisionModel: boolean;
   decisionModel: string;
   sensitivity: 'low' | 'medium' | 'high';
-  explanationLanguage: 'he' | 'en' | 'auto';
+  /** 'ui' follows the interface language (default); 'auto' follows the analyzed text. */
+  explanationLanguage: 'ui' | 'he' | 'en' | 'auto';
   theme: 'system' | 'light' | 'dark';
   /** UI text size: applied as a root class (text-size-large / text-size-larger). */
   textSize: 'normal' | 'large' | 'larger';

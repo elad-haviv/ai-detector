@@ -2,11 +2,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount } from '@/lib/account';
-import { he } from '@/lib/i18n/he';
+import { useT } from '@/lib/i18n/client';
 import { IconUser } from './icons';
 
-/** Header account entry: avatar initial when signed in, "התחברות" when not. Both go to /account. */
+/** Header account entry: avatar initial when signed in, "Sign in" when not. Both go to /account. */
 export function AccountButton() {
+  const t = useT();
   const account = useAccount();
   const path = usePathname();
   const current = path.startsWith('/account') ? 'page' : undefined;
@@ -18,7 +19,7 @@ export function AccountButton() {
       <Link
         href="/account"
         aria-current={current}
-        aria-label={he.shell.accountLabel.replace('{name}', label)}
+        aria-label={t.shell.accountLabel.replace('{name}', label)}
         title={account.email}
         className="grid size-11 shrink-0 place-items-center rounded-full"
       >
@@ -35,7 +36,7 @@ export function AccountButton() {
       className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border-strong px-3 text-caption max-[400px]:px-2.5 font-semibold hover:bg-surface-2"
     >
       <IconUser width={16} height={16} />
-      <span className="max-[400px]:sr-only">{he.shell.signIn}</span>
+      <span className="max-[400px]:sr-only">{t.shell.signIn}</span>
     </Link>
   );
 }

@@ -11,7 +11,7 @@ const TOPICS = [
   ['behaviorism', 'ביהביוריזם'],
   ['democracy', 'דמוקרטיה'],
 ];
-const UA = 'kulmus-eval/0.1 (personal research; detector evaluation)';
+const UA = 'penprint-eval/0.1 (personal research; detector evaluation)';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function get(url) {

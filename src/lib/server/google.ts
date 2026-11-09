@@ -23,7 +23,8 @@ export function redirectUri(origin: string): string {
   return `${origin}/api/auth/google/callback`;
 }
 
-export function authorizeUrl(args: { clientId: string; redirectUri: string; state: string; challenge: string }): string {
+/** `hl` sets the language of Google's consent screen (we pass the UI language). */
+export function authorizeUrl(args: { clientId: string; redirectUri: string; state: string; challenge: string; hl?: string }): string {
   const u = new URL(GOOGLE_AUTH_URL);
   u.searchParams.set('client_id', args.clientId);
   u.searchParams.set('redirect_uri', args.redirectUri);
@@ -33,6 +34,7 @@ export function authorizeUrl(args: { clientId: string; redirectUri: string; stat
   u.searchParams.set('code_challenge', args.challenge);
   u.searchParams.set('code_challenge_method', 'S256');
   u.searchParams.set('prompt', 'select_account');
+  if (args.hl) u.searchParams.set('hl', args.hl);
   return u.toString();
 }
 

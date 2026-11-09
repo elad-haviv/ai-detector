@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { he } from '@/lib/i18n/he';
+import { getT } from '@/lib/i18n/server';
 import { Workspace } from '@/components/Workspace';
 
-export const metadata: Metadata = { title: he.input.pageTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT()).input.pageTitle };
+}
 
 export default function Home() {
   return (

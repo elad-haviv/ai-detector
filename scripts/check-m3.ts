@@ -4,8 +4,15 @@
  * (also `npm run check:m3`). `react-server` makes the `server-only` marker import a no-op.
  */
 import assert from 'node:assert/strict';
-import { newSession, safeReturnTo, signToken, verifyToken, pkceChallenge, readCookie, secureCookies, type SessionPayload } from '../src/lib/server/session.ts';
-import { identityFromClaims } from '../src/lib/server/google.ts';
+import { newSession, safeReturnTo, signToken, verifyToken, pkceChallenge, readCookie, secureCookies, SESSION_COOKIE, OAUTH_COOKIE, type SessionPayload } from '../src/lib/server/session.ts';
+import { authorizeUrl, identityFromClaims } from '../src/lib/server/google.ts';
+import { LANG_COOKIE, dirOf, fmt, resolveLocale } from '../src/lib/i18n/config.ts';
+import { he } from '../src/lib/i18n/he.ts';
+import { en } from '../src/lib/i18n/en.ts';
+import * as legalHe from '../src/lib/i18n/legal.he.ts';
+import * as legalEn from '../src/lib/i18n/legal.en.ts';
+import { PATTERNS } from '../src/lib/patterns/catalog.ts';
+import { PATTERN_TEXT_EN } from '../src/lib/patterns/catalog.en.ts';
 import { createPaddleBilling } from '../src/lib/server/billing/paddle.ts';
 import { takeToken, resetRateLimit } from '../src/lib/server/rateLimit.ts';
 
@@ -36,11 +43,15 @@ assert.equal(verifyToken(`${body.slice(0, -1)}.${sig}`, SECRET), null);
 ok('truncated payload is rejected');
 
 // --- cookies ---
-const req = new Request('http://localhost/', { headers: { cookie: `foo=1; kulmus_session=${tok}; bar=2` } });
-assert.equal(readCookie(req, 'kulmus_session'), tok);
+assert.equal(SESSION_COOKIE, 'penprint_session');
+assert.equal(OAUTH_COOKIE, 'penprint_oauth');
+const req = new Request('http://localhost/', { headers: { cookie: `foo=1; ${SESSION_COOKIE}=${tok}; bar=2` } });
+assert.equal(readCookie(req, SESSION_COOKIE), tok);
+// a cookie from the app's former name is not read as a session
+assert.equal(readCookie(new Request('http://localhost/', { headers: { cookie: `kulmus_session=${tok}` } }), SESSION_COOKIE), undefined);
 assert.equal(secureCookies('http://localhost:3125'), false);
-assert.equal(secureCookies('https://kulmus.app'), true);
-assert.equal(secureCookies('http://kulmus.app'), true);
+assert.equal(secureCookies('https://penprint.app'), true);
+assert.equal(secureCookies('http://penprint.app'), true);
 ok('cookie parsing and Secure flag');
 
 // --- returnTo ---
@@ -67,6 +78,62 @@ assert.equal(identityFromClaims({ ...claims, iss: 'https://evil.com' }, 'cid'), 
 assert.equal(identityFromClaims({ ...claims, exp: now - 3600 }, 'cid'), null);
 assert.equal(identityFromClaims({ ...claims, email_verified: false }, 'cid'), null);
 ok('id_token claims: aud, iss, exp, email_verified');
+assert.equal(new URL(authorizeUrl({ clientId: 'c', redirectUri: 'http://x/cb', state: 's', challenge: 'c', hl: 'en' })).searchParams.get('hl'), 'en');
+assert.equal(new URL(authorizeUrl({ clientId: 'c', redirectUri: 'http://x/cb', state: 's', challenge: 'c' })).searchParams.has('hl'), false);
+ok('Google consent screen follows the UI language (hl)');
+
+// --- i18n: locale resolution ---
+assert.equal(LANG_COOKIE, 'penprint_lang');
+assert.equal(resolveLocale('en', 'he-IL'), 'en');
+assert.equal(resolveLocale('he', 'en-US'), 'he');
+assert.equal(resolveLocale('fr', 'en-US,en;q=0.9'), 'en'); // invalid cookie value is ignored
+assert.equal(resolveLocale(undefined, 'en-US,en;q=0.9,he;q=0.8'), 'en');
+assert.equal(resolveLocale(undefined, 'he-IL,he;q=0.9,en-US;q=0.8'), 'he');
+assert.equal(resolveLocale(undefined, 'iw'), 'he');
+assert.equal(resolveLocale(undefined, 'fr-FR,fr;q=0.9,en;q=0.5'), 'en');
+assert.equal(resolveLocale(undefined, 'en;q=0.3,he;q=0.7'), 'he');
+assert.equal(resolveLocale(undefined, 'fr-FR,de'), 'he');
+assert.equal(resolveLocale(undefined, ''), 'he');
+assert.equal(resolveLocale(undefined, undefined), 'he');
+assert.equal(dirOf('he'), 'rtl');
+assert.equal(dirOf('en'), 'ltr');
+assert.equal(fmt('{a} of {b} ({c})', { a: 1, b: 'two' }), '1 of two ({c})');
+ok('locale: cookie, then Accept-Language by q-value, then Hebrew');
+
+// --- i18n: dictionaries have the same shape and the same placeholders ---
+function compare(a: unknown, b: unknown, path: string) {
+  if (typeof a === 'string') {
+    assert.equal(typeof b, 'string', path);
+    const ph = (x: string) => [...x.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+    assert.equal(ph(b as string), ph(a), `placeholders differ at ${path}`);
+    // docx.viewBefore is empty on purpose in English ("Word view:" puts the word first)
+    if (path !== 'dict.docx.viewBefore') assert.ok((b as string).trim() || !(a as string).trim(), `empty translation at ${path}`);
+    return;
+  }
+  if (Array.isArray(a)) {
+    assert.ok(Array.isArray(b), path);
+    assert.equal((b as unknown[]).length, a.length, `length differs at ${path}`);
+    a.forEach((x, i) => compare(x, (b as unknown[])[i], `${path}[${i}]`));
+    return;
+  }
+  if (a && typeof a === 'object') {
+    assert.deepEqual(Object.keys(b as object).sort(), Object.keys(a).sort(), `keys differ at ${path}`);
+    for (const k of Object.keys(a)) compare((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`);
+  }
+}
+compare(he, en, 'dict');
+ok('he and en dictionaries match key for key, with the same placeholders');
+for (const doc of ['privacyDoc', 'termsDoc', 'accessibilityDoc'] as const) {
+  assert.deepEqual(legalEn[doc].sections.map((x) => x.id), legalHe[doc].sections.map((x) => x.id), doc);
+}
+for (const t of [legalHe.privacyDoc, legalEn.privacyDoc]) {
+  const cookies = t.sections.find((x) => x.id === 'cookies')!.blocks.flatMap((b) => ('table' in b ? b.table.rows.map((r) => r[0]) : []));
+  assert.deepEqual(cookies, ['penprint_session', 'penprint_oauth', 'penprint_lang', 'penprint_consent']);
+}
+ok('legal documents: same section anchors in both languages; cookie table lists every cookie');
+for (const p of PATTERNS) assert.ok(PATTERN_TEXT_EN[p.id]?.description && PATTERN_TEXT_EN[p.id]?.fix, `missing English text for pattern ${p.id}`);
+assert.deepEqual(Object.keys(PATTERN_TEXT_EN).filter((id) => !PATTERNS.some((p) => p.id === id)), []);
+ok('every pattern has an English description and fix');
 
 // --- Paddle with a fake fetch ---
 const calls: { url: string; method: string; auth: string | null; body?: string }[] = [];

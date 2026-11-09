@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { he } from '@/lib/i18n/he';
+import { useT } from '@/lib/i18n/client';
 import { IconX } from '../icons';
 
 export interface ToastOptions {
@@ -17,7 +17,7 @@ interface ToastItem extends ToastOptions {
 
 const Ctx = createContext<(message: ReactNode, opts?: ToastOptions) => void>(() => {});
 
-/** `const toast = useToast(); toast('נשמר', { tone: 'success' })` */
+/** `const toast = useToast(); toast(t.settings.saved, { tone: 'success' })` */
 export function useToast() {
   return useContext(Ctx);
 }
@@ -27,9 +27,10 @@ export function useToast() {
  * readers announce messages as they are added. Toasts never steal focus.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const [items, setItems] = useState<ToastItem[]>([]);
   const seq = useRef(0);
-  const dismiss = useCallback((id: number) => setItems((l) => l.filter((t) => t.id !== id)), []);
+  const dismiss = useCallback((id: number) => setItems((l) => l.filter((x) => x.id !== id)), []);
   const push = useCallback((message: ReactNode, opts: ToastOptions = {}) => {
     const id = ++seq.current;
     setItems((l) => [...l.slice(-2), { id, message, ...opts }]);
@@ -40,11 +41,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        aria-label={he.ui.notifications}
+        aria-label={t.ui.notifications}
         className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 px-4 md:bottom-6"
       >
-        {items.map((t) => (
-          <Toast key={t.id} item={t} onDismiss={() => dismiss(t.id)} />
+        {items.map((item) => (
+          <Toast key={item.id} item={item} onDismiss={() => dismiss(item.id)} />
         ))}
       </div>
     </Ctx.Provider>
@@ -52,11 +53,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: () => void }) {
+  const t = useT();
   const { duration = 5000 } = item;
   useEffect(() => {
     if (!duration) return;
-    const t = setTimeout(onDismiss, duration);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onDismiss, duration);
+    return () => clearTimeout(timer);
   }, [duration, onDismiss]);
   const tone = item.tone === 'success' ? 'border-s-success' : item.tone === 'danger' ? 'border-s-danger' : 'border-s-accent';
   return (
@@ -74,7 +76,7 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: () => void }) 
           {item.action.label}
         </button>
       )}
-      <button type="button" onClick={onDismiss} aria-label={he.ui.dismiss} className="grid size-9 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-text">
+      <button type="button" onClick={onDismiss} aria-label={t.ui.dismiss} className="grid size-9 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-text">
         <IconX width={16} height={16} />
       </button>
     </div>

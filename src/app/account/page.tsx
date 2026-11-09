@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { AccountView } from '@/components/AccountView';
-import { he } from '@/lib/i18n/he';
+import { pageTitle } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: `${he.account.title} · ${he.appName}` };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageTitle((t) => t.account.title);
+}
 
 export default function AccountPage() {
   return (

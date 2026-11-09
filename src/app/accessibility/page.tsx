@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import { LegalPage } from '@/components/LegalPage';
-import { he } from '@/lib/i18n/he';
-import { accessibilityDoc } from '@/lib/i18n/legal.he';
+import { getLegal } from '@/lib/i18n/legal';
+import { getLocale, pageTitle } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: `${he.shell.accessibility} · ${he.appName}` };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageTitle((t) => t.shell.accessibility);
+}
 
-export default function AccessibilityPage() {
-  return <LegalPage doc={accessibilityDoc} />;
+export default async function AccessibilityPage() {
+  return <LegalPage doc={getLegal(await getLocale()).accessibility} />;
 }

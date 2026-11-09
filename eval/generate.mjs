@@ -23,7 +23,7 @@ await Promise.all(
     if (existsSync(file)) return;
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY}`, 'X-Title': 'Kulmus eval' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY}`, 'X-Title': 'Penprint eval' },
       body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt(topic) }], max_tokens: 8000 }),
     });
     const data = await res.json();

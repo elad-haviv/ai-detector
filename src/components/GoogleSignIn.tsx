@@ -1,6 +1,6 @@
 'use client';
 import { signInUrl, useAccount } from '@/lib/account';
-import { he } from '@/lib/i18n/he';
+import { useT } from '@/lib/i18n/client';
 import { buttonClass } from './ui';
 
 function GoogleMark() {
@@ -19,7 +19,9 @@ function GoogleMark() {
  * sets an essential cookie. When the server has no Google credentials, renders a disabled button and
  * an explanation instead.
  */
-export function GoogleSignIn({ returnTo = '/account', label = he.account.google, variant = 'primary' as const, showNote = true }: { returnTo?: string; label?: string; variant?: 'primary' | 'secondary'; showNote?: boolean }) {
+export function GoogleSignIn({ returnTo = '/account', label: labelProp, variant = 'primary' as const, showNote = true }: { returnTo?: string; label?: string; variant?: 'primary' | 'secondary'; showNote?: boolean }) {
+  const t = useT();
+  const label = labelProp ?? t.account.google;
   const account = useAccount();
   const noteId = `gsi-note-${returnTo.replace(/[^a-z0-9]/gi, '')}`;
   if (account.loaded && !account.configured.google) {
@@ -30,7 +32,7 @@ export function GoogleSignIn({ returnTo = '/account', label = he.account.google,
           {label}
         </button>
         <p id={noteId} className="text-caption text-muted">
-          {he.account.notConfigured}
+          {t.account.notConfigured}
         </p>
       </div>
     );
@@ -45,7 +47,7 @@ export function GoogleSignIn({ returnTo = '/account', label = he.account.google,
       </a>
       {showNote && (
         <p id={noteId} className="text-caption text-muted">
-          {he.account.googleCookieNote}
+          {t.account.googleCookieNote}
         </p>
       )}
     </div>
