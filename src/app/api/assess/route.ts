@@ -1,7 +1,7 @@
 import { ASSESS_SYSTEM_PROMPT, DOC_DECISION_QUESTION, buildAssessUserPrompt } from '@/lib/prompts';
 import { getEntitlement } from '@/lib/server/entitlement';
 import { json, readJson } from '@/lib/server/http';
-import { ProviderError, chatJson, decideDocument, parseJsonLoose, publicError, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
+import { ProviderError, chatJson, decideDocument, parseJsonLoose, publicError, fairUseGate, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
 import type { AssessRequest, AssessResponse } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -40,9 +40,11 @@ export async function POST(req: Request) {
   const shown = sample(b.paragraphs);
   const text = shown.map((p) => p.text).join('\n\n');
   const out: AssessResponse = { errors: {} };
+  const overLimit = fairUseGate(ent, b);
 
   const llm = (async () => {
     const system = ASSESS_SYSTEM_PROMPT.replaceAll('{{EXPLANATION_LANGUAGE}}', b.explanationLanguage === 'he' ? 'Hebrew' : 'English');
+    if (overLimit) throw overLimit;
     const access = resolveAccess(ent, b);
     const call = async () => {
       const raw = await chatJson({
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
         .map((p) => ({ i: Number(p.i), ai_probability: Math.max(0, Math.min(100, Math.round(Number(p.ai_probability)))) })),
     };
   })();
-  const decision = b.decisionModel
+  const decision = b.decisionModel && !overLimit
     ? (async () => {
         out.decision = await decideDocument({
           apiKey: resolveDecisionKey(ent, b.openrouterKey),

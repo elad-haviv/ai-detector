@@ -71,7 +71,8 @@ export interface Analysis {
   stats: DocStats;
   /** Whole-document assessment: authorship shows far more clearly across a document than in one sentence. */
   document?: DocumentAssessment;
-  meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string };
+  /** `mode`: who paid for the model calls (the user's own key, or the Pro subscription). Absent = local rules only. */
+  meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string; mode?: 'byok' | 'managed' };
   /** Original file kept in IndexedDB (key = analysis id) so the formatted Word view can be rendered. */
   source?: { kind: 'docx'; fileName: string };
 }
@@ -167,4 +168,16 @@ export interface AnalyzeChunkResponse {
   llm?: LlmOut;
   decisions?: Record<number, number>; // id -> 0-100
   errors?: { llm?: string; decision?: string };
+}
+
+/** GET /api/me: who is signed in and what they can use. Nothing here is stored by the server. */
+export interface AccountInfo {
+  signedIn: boolean;
+  email?: string;
+  name?: string;
+  plan: 'pro' | 'free';
+  subscription?: { status: string; renewsAt?: string; cancelsAt?: string; graceUntil?: number };
+  /** Provider and model used for Pro requests (only for subscribers). */
+  managed?: { provider: ProviderId; model: string };
+  configured: { google: boolean; billing: boolean };
 }

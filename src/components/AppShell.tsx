@@ -1,11 +1,14 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { he } from '@/lib/i18n/he';
 import { useApplyTextSize, useApplyTheme, useSettings } from '@/lib/store';
+import { OPEN_COOKIE_SETTINGS_EVENT } from '@/lib/consent';
 import { AccessChip } from './AccessChip';
+import { AccountButton } from './AccountButton';
+import { CookieConsent } from './CookieConsent';
 import { IconHistory, IconPen, IconSettings } from './icons';
-import { ToastProvider, useToast } from './ui/Toast';
+import { ToastProvider } from './ui/Toast';
 
 const NAV = [
   { href: '/', label: he.nav.analyze, Icon: IconPen },
@@ -13,8 +16,8 @@ const NAV = [
   { href: '/settings', label: he.nav.settings, Icon: IconSettings },
 ];
 
-/** Event the footer "cookie settings" button dispatches; the consent banner (M3) listens for it. */
-export const OPEN_COOKIE_SETTINGS_EVENT = 'kulmus:open-cookie-settings';
+/** Event the footer "cookie settings" button dispatches; CookieConsent listens and calls preventDefault(). */
+export { OPEN_COOKIE_SETTINGS_EVENT };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [settings] = useSettings();
@@ -64,7 +67,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Keep both inside this div so layout stays stable. */}
             <div data-slot="header-status" className="ms-auto flex items-center gap-2 md:ms-2">
               <AccessChip />
-              {/* data-slot="account-button": M3 adds the sign-in / avatar button here. */}
+              <div data-slot="account-button">
+                <AccountButton />
+              </div>
             </div>
           </div>
         </header>
@@ -74,6 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
 
         <Footer />
+        <CookieConsent />
 
         <nav className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface md:hidden" aria-label={he.nav.main} data-tabbar>
           <ul className="flex">
@@ -99,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 function Footer() {
-  const toast = useToast();
+  const router = useRouter();
   const link = 'inline-flex min-h-11 items-center rounded-md px-1 text-muted underline-offset-4 hover:text-text hover:underline';
   return (
     <footer className="border-t border-border pb-20 md:pb-0">
@@ -127,8 +133,8 @@ function Footer() {
                 className={link}
                 onClick={() => {
                   const ev = new CustomEvent(OPEN_COOKIE_SETTINGS_EVENT, { cancelable: true });
-                  // If nothing handles it yet (before M3), explain instead of doing nothing.
-                  if (window.dispatchEvent(ev)) toast(he.shell.cookieSettingsSoon);
+                  // CookieConsent calls preventDefault(); if nothing handled it, go to the cookie policy.
+                  if (window.dispatchEvent(ev)) router.push('/privacy#cookies');
                 }}
               >
                 {he.shell.cookieSettings}

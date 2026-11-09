@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { getAccount, type AccountState } from './account';
 import { getKeys, migrateLegacyKeys, type ApiKeys } from './keyStore';
 import type { Analysis, ProviderId, Settings } from './types';
 
@@ -87,6 +88,17 @@ export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
 /** True when the chosen provider has a key in the key store (pass `keys` from `useKeys()` in components). */
 export function hasKey(s: Settings, keys: ApiKeys = getKeys()): boolean {
   return Boolean(keys[s.provider]?.trim());
+}
+
+/**
+ * How model calls run right now: the user's own key wins ('byok'); else a Pro subscriber runs on the
+ * server's keys ('managed', requests carry no key); else null = local rules only.
+ */
+export type LlmMode = 'byok' | 'managed' | null;
+export function llmMode(s: Settings, keys: ApiKeys = getKeys(), account: Pick<AccountState, 'plan'> = getAccount()): LlmMode {
+  if (hasKey(s, keys)) return 'byok';
+  if (account.plan === 'pro') return 'managed';
+  return null;
 }
 
 // --- theme ---

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import { StubPage } from '@/components/StubPage';
+import { LegalPage } from '@/components/LegalPage';
 import { he } from '@/lib/i18n/he';
+import { termsDoc } from '@/lib/i18n/legal.he';
 
 export const metadata: Metadata = { title: `${he.shell.terms} · ${he.appName}` };
 
 export default function TermsPage() {
-  return <StubPage title={he.shell.terms} intro={he.stub.termsIntro} />;
+  return <LegalPage doc={termsDoc} />;
 }

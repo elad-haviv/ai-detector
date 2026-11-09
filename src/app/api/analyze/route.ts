@@ -2,7 +2,7 @@ import { DETECTION_SYSTEM_PROMPT, DECISION_QUESTION, buildDetectionUserPrompt } 
 import { PATTERNS } from '@/lib/patterns/catalog';
 import { getEntitlement } from '@/lib/server/entitlement';
 import { json, readJson } from '@/lib/server/http';
-import { ProviderError, chatJson, decide, parseJsonLoose, publicError, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
+import { ProviderError, chatJson, decide, parseJsonLoose, publicError, fairUseGate, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
 import type { AnalyzeChunkRequest, AnalyzeChunkResponse, LlmOut } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -18,9 +18,12 @@ export async function POST(req: Request) {
   const ent = await getEntitlement(req);
   const secrets = [body.apiKey, body.openrouterKey];
   const out: AnalyzeChunkResponse = { errors: {} };
+  const overLimit = fairUseGate(ent, body);
 
   const llmTask = (async () => {
-    const { provider, apiKey, model } = resolveAccess(ent, body);
+    if (overLimit) throw overLimit;
+    const access = resolveAccess(ent, body);
+    const { provider, apiKey, model } = access;
     const system = DETECTION_SYSTEM_PROMPT.replaceAll('{{PATTERN_LIST}}', PATTERN_LIST).replaceAll(
       '{{EXPLANATION_LANGUAGE}}',
       body.explanationLanguage === 'he' ? 'Hebrew' : 'English',
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
     out.llm = parsed;
   })();
 
-  const decisionTask = body.decisionModel
+  const decisionTask = body.decisionModel && !overLimit
     ? (async () => {
         const apiKey = resolveDecisionKey(ent, body.openrouterKey);
         out.decisions = await decide({

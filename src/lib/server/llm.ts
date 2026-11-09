@@ -14,6 +14,7 @@
 import 'server-only';
 import { isProviderId, type ProviderId } from '../types';
 import type { Entitlement } from './entitlement';
+import { takeToken } from './rateLimit';
 
 export class ProviderError extends Error {
   constructor(
@@ -49,6 +50,13 @@ export interface Access {
   mode: 'byok' | 'managed';
 }
 
+/** Provider and model the server uses for subscribers (MANAGED_PROVIDER / MANAGED_MODEL). */
+export function managedTarget(): { provider: ProviderId; model: string } {
+  const envProvider = process.env.MANAGED_PROVIDER;
+  const provider: ProviderId = isProviderId(envProvider) ? envProvider : 'openrouter';
+  return { provider, model: process.env.MANAGED_MODEL?.trim() || MANAGED_DEFAULT_MODELS[provider] };
+}
+
 /**
  * Decide which provider, key and model a request runs on:
  * 1. the user's own key (BYOK) for the provider they chose, with their model;
@@ -64,13 +72,42 @@ export function resolveAccess(ent: Entitlement, req: { provider?: unknown; apiKe
     return { provider: req.provider, apiKey: supplied, model, mode: 'byok' };
   }
   if (ent.plan === 'pro') {
-    const envProvider = process.env.MANAGED_PROVIDER;
-    const provider: ProviderId = isProviderId(envProvider) ? envProvider : 'openrouter';
+    const { provider, model } = managedTarget();
     const apiKey = process.env[ENV_KEYS[provider]]?.trim();
     if (!apiKey) throw new ProviderError('managed mode is not configured on this server', 503, 'upstream');
-    return { provider, apiKey, model: process.env.MANAGED_MODEL?.trim() || MANAGED_DEFAULT_MODELS[provider], mode: 'managed' };
+    return { provider, apiKey, model, mode: 'managed' };
   }
   throw new ProviderError('missing key', 401, 'missing_key');
+}
+
+/**
+ * Fair use for managed mode: counts one call against the subscriber's hourly budget and throws a 429
+ * `rate_limit` when it is used up. BYOK calls are not counted (the user pays their provider).
+ */
+export function enforceFairUse(ent: Entitlement, access: Access) {
+  if (access.mode !== 'managed' || ent.plan !== 'pro') return;
+  const r = takeToken(ent.email.toLowerCase());
+  if (!r.ok) throw new ProviderError(`fair_use: hourly limit reached, retry in ${Math.ceil(r.retryAfter / 60)} min`, 429, 'rate_limit');
+}
+
+/**
+ * Runs the fair-use check once per request, before any model call (so decision calls are skipped too).
+ * Returns the 429 error when the subscriber is over the limit, else null (also for BYOK / no access,
+ * which `resolveAccess` reports on its own).
+ */
+export function fairUseGate(ent: Entitlement, req: { provider?: unknown; apiKey?: unknown; model?: unknown }): ProviderError | null {
+  let access: Access;
+  try {
+    access = resolveAccess(ent, req);
+  } catch {
+    return null;
+  }
+  try {
+    enforceFairUse(ent, access);
+    return null;
+  } catch (e) {
+    return e as ProviderError;
+  }
 }
 
 /** Key for the OpenRouter Decisions API: same rule as `resolveAccess` (own key, else entitled env key, else 401). */

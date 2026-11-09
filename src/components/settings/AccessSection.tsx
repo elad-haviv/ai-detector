@@ -3,7 +3,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { he } from '@/lib/i18n/he';
 import { forgetAllKeys, setKey, setRemember, useKeys } from '@/lib/keyStore';
 import { errorCode } from '@/lib/runAnalysis';
-import { DEFAULT_MODELS, MODEL_SUGGESTIONS, useSettings } from '@/lib/store';
+import { DEFAULT_MODELS, MODEL_SUGGESTIONS, hasKey, useSettings } from '@/lib/store';
+import { useAccount } from '@/lib/account';
 import type { ProviderId } from '@/lib/types';
 import { Button, ButtonLink, Checkbox, ConfirmDialog, Field, Input, SegmentedControl, Select, useToast, type FieldControlProps } from '@/components/ui';
 import { IconExternal, IconInfo, IconShield, IconTrash } from '@/components/icons';
@@ -178,6 +179,40 @@ function TestConnection({ provider }: { provider: ProviderId }) {
   );
 }
 
+/** Pro state in Settings → Access: active subscription, or a compact upsell to /pricing. */
+function SubscriptionStatus() {
+  const account = useAccount();
+  const [s] = useSettings();
+  const { keys } = useKeys();
+  if (!account.loaded) return <div data-slot="subscription" className="min-h-20" />;
+  if (account.plan === 'pro') {
+    return (
+      <div data-slot="subscription" className="rounded-lg border border-border border-s-4 border-s-success bg-surface p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-bold">{he.settings.proTitle}</h3>
+          <span className="rounded-full border border-success px-2 text-xs font-semibold text-success">{he.settings.proActiveBadge}</span>
+        </div>
+        <p className="mt-1 text-sm">{he.settings.proActive}</p>
+        {hasKey(s, keys) && <p className="mt-1 text-caption text-muted">{he.settings.proActiveKeyNote}</p>}
+        <ButtonLink href="/account" variant="link" className="mt-1">
+          {he.settings.proManage}
+        </ButtonLink>
+      </div>
+    );
+  }
+  return (
+    <div data-slot="subscription" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border-strong bg-surface-2 p-4">
+      <div className="min-w-0 flex-1">
+        <h3 className="font-bold">{he.settings.proTitle}</h3>
+        <p className="mt-0.5 text-sm text-muted">{he.settings.proBody}</p>
+      </div>
+      <ButtonLink href="/pricing" variant="secondary">
+        {he.settings.proLink}
+      </ButtonLink>
+    </div>
+  );
+}
+
 export function AccessSection() {
   const [s, update] = useSettings();
   const { keys, remember } = useKeys();
@@ -197,17 +232,7 @@ export function AccessSection() {
 
   return (
     <>
-      {/* Subscription: M3 replaces this placeholder with plan status / checkout. */}
-      <div data-slot="subscription" className="rounded-lg border border-dashed border-border-strong bg-surface-2 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-bold">{he.settings.proTitle}</h3>
-          <span className="rounded-full border border-border-strong px-2 text-xs font-semibold text-muted">{he.settings.proBadge}</span>
-        </div>
-        <p className="mt-1 text-sm text-muted">{he.settings.proBody}</p>
-        <ButtonLink href="/pricing" variant="link" className="mt-1">
-          {he.settings.proLink}
-        </ButtonLink>
-      </div>
+      <SubscriptionStatus />
 
       <div className="space-y-4">
         <header>

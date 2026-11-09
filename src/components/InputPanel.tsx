@@ -1,12 +1,13 @@
 'use client';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { he } from '@/lib/i18n/he';
 import { countWords } from '@/lib/segment';
 import { useKeys } from '@/lib/keyStore';
-import { hasKey, useSettings } from '@/lib/store';
+import { llmMode, useSettings } from '@/lib/store';
+import { useAccount } from '@/lib/account';
+import { OnboardingChooser } from './OnboardingChooser';
 import { readBlocks } from '@/lib/docx/model';
-import { IconFile, IconInfo, IconUpload } from './icons';
+import { IconFile, IconUpload } from './icons';
 import { Button, Field, Input, Textarea, useToast } from './ui';
 
 const MIN_WORDS = 25;
@@ -28,6 +29,7 @@ export function InputPanel({
   const [docx, setDocx] = useState<{ bytes: ArrayBuffer; name: string; text: string } | null>(null);
   const [settings] = useSettings();
   const { keys } = useKeys();
+  const account = useAccount();
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [context, setContext] = useState('');
@@ -151,17 +153,7 @@ export function InputPanel({
         ))}
       </ol>
 
-      {mounted && !hasKey(settings, keys) && (
-        <div className="mt-4 flex items-start gap-3 rounded-lg border border-border border-s-4 border-s-warning bg-surface p-3 text-sm">
-          <IconInfo className="mt-0.5 shrink-0 text-warning" />
-          <p>
-            {he.input.localOnlyNotice}{' '}
-            <Link href="/settings#access" className="font-semibold text-accent underline underline-offset-4">
-              {he.input.localOnlyLink}
-            </Link>
-          </p>
-        </div>
-      )}
+      {mounted && account.loaded && !llmMode(settings, keys, account) && <OnboardingChooser />}
 
       <form
         className="card mt-4 space-y-4 p-4 md:p-6"
