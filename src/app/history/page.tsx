@@ -3,48 +3,122 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { he } from '@/lib/i18n/he';
 import { useHistory } from '@/lib/store';
+import type { Analysis } from '@/lib/types';
 import { ScoreRing } from '@/components/results/shared';
+import { IconHistory, IconSearch, IconTrash } from '@/components/icons';
+import { Button, ButtonLink, ConfirmDialog, Field, Input, useToast } from '@/components/ui';
 
 export default function HistoryPage() {
   const { items, remove, clear } = useHistory();
+  const toast = useToast();
   const [q, setQ] = useState('');
-  const shown = items.filter((a) => !q || a.title.includes(q) || a.sentences.some((s) => s.text.includes(q)));
+  const [toDelete, setToDelete] = useState<Analysis | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const query = q.trim();
+  const shown = items.filter((a) => !query || a.title.includes(query) || a.sentences.some((s) => s.text.includes(query)));
+  const fmt = (n: number) => n.toLocaleString('he-IL');
 
   return (
-    <div className="mx-auto max-w-[760px] px-4 py-6 md:py-10">
-      <div className="mb-4 flex items-center gap-3">
-        <h1 className="text-[22px] font-bold">{he.history.title}</h1>
+    <div className="mx-auto max-w-[800px] px-4 py-6 md:py-10">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <h1 className="text-title font-bold">{he.history.title}</h1>
         {items.length > 0 && (
-          <button onClick={() => confirm(he.history.clearAllConfirm) && clear()} className="ms-auto text-[14px] text-muted underline">
+          <Button variant="ghost" size="sm" icon={<IconTrash width={16} height={16} />} onClick={() => setConfirmClear(true)} className="ms-auto text-danger">
             {he.history.clearAll}
-          </button>
+          </Button>
         )}
       </div>
-      {items.length > 0 && (
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש" className="mb-4 min-h-11 w-full rounded-md border border-border bg-surface px-3" />
-      )}
+
       {items.length === 0 ? (
-        <div className="card p-8 text-center text-muted">{he.empty.history}</div>
+        <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <span aria-hidden className="grid size-14 place-items-center rounded-full bg-surface-2 text-muted">
+            <IconHistory width={28} height={28} />
+          </span>
+          <p className="max-w-sm text-muted">{he.empty.history}</p>
+          <ButtonLink href="/" variant="primary">
+            {he.history.startFirst}
+          </ButtonLink>
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {shown.map((a) => (
-            <li key={a.id} className="card flex items-center gap-3 p-3">
-              <ScoreRing value={a.overall.probability} size={44} stroke={4} />
-              <Link href={`/?id=${a.id}`} className="min-w-0 flex-1">
-                <div dir="auto" className="truncate font-bold">{a.title}</div>
-                <div className="text-[13px] text-muted">
-                  {he.history.analyzedOn.replace('{date}', new Date(a.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }))} ·{' '}
-                  {a.stats.words.toLocaleString('he-IL')} מילים{a.meta.model ? '' : ' · מקומי'}
+        <>
+          <div role="search" className="mb-4">
+            <Field label={he.history.search} hint={he.history.searchHint}>
+              {(p) => (
+                <div className="relative">
+                  <IconSearch aria-hidden className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted" />
+                  <Input {...p} type="search" value={q} onChange={(e) => setQ(e.target.value)} className="ps-10" dir="auto" />
                 </div>
-              </Link>
-              <button onClick={() => confirm(he.history.deleteConfirm) && remove(a.id)} className="min-h-10 rounded-md px-3 text-[14px] text-muted hover:text-danger">
-                {he.history.delete}
-              </button>
-            </li>
-          ))}
-        </ul>
+              )}
+            </Field>
+          </div>
+          <p className="mb-2 text-caption text-muted" role="status">
+            {query && shown.length === 0 ? he.history.noMatches.replace('{q}', query) : shown.length === 1 ? he.history.resultsOne : he.history.resultsCount.replace('{count}', fmt(shown.length))}
+          </p>
+          <ul className="space-y-2">
+            {shown.map((a) => (
+              <li key={a.id} className="card flex items-center gap-3 p-2 ps-3 transition-colors hover:border-border-strong">
+                <ScoreRing value={a.overall.probability} size={44} stroke={4} />
+                <Link href={`/?id=${a.id}`} className="min-w-0 flex-1 rounded-md py-1">
+                  <div dir="auto" className="truncate font-bold">
+                    {a.title}
+                  </div>
+                  <div className="text-caption text-muted">
+                    {he.history.analyzedOn.replace('{date}', new Date(a.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }))} ·{' '}
+                    {he.history.words.replace('{count}', fmt(a.stats.words))}
+                    {a.meta.model ? '' : ` · ${he.history.local}`}
+                  </div>
+                </Link>
+                <Button
+                  variant="ghost"
+                  iconOnly
+                  aria-label={he.history.deleteItem.replace('{title}', a.title)}
+                  title={he.history.delete}
+                  onClick={() => setToDelete(a)}
+                  className="text-muted hover:text-danger"
+                >
+                  <IconTrash />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
-      <p className="mt-4 text-[12px] text-muted">{he.history.storedLocally}</p>
+      <p className="mt-4 text-xs text-muted">{he.history.storedLocally}</p>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title={he.history.deleteTitle}
+        body={
+          <>
+            <span dir="auto" className="font-semibold text-text">
+              {toDelete?.title}
+            </span>
+            <br />
+            {he.history.deleteConfirm}
+          </>
+        }
+        confirmLabel={he.history.delete}
+        danger
+        onCancel={() => setToDelete(null)}
+        onConfirm={() => {
+          if (toDelete) remove(toDelete.id);
+          setToDelete(null);
+          toast(he.history.deleted, { tone: 'success' });
+        }}
+      />
+      <ConfirmDialog
+        open={confirmClear}
+        title={he.history.clearAllTitle}
+        body={he.history.clearAllConfirm}
+        confirmLabel={he.history.clearAll}
+        danger
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => {
+          clear();
+          setConfirmClear(false);
+          toast(he.history.cleared, { tone: 'success' });
+        }}
+      />
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { he } from '@/lib/i18n/he';
 import { countWords } from '@/lib/segment';
 import { hasKey, useSettings } from '@/lib/store';
 import { readBlocks } from '@/lib/docx/model';
-import { IconInfo, IconUpload } from './icons';
+import { IconFile, IconInfo, IconUpload } from './icons';
+import { Button, Field, Input, Textarea, useToast } from './ui';
 
 const MIN_WORDS = 25;
 const MAX_WORDS = 20000;
@@ -36,6 +37,8 @@ export function InputPanel({
   useEffect(() => setMounted(true), []);
 
   const words = countWords(text);
+  const chars = text.length;
+  const toast = useToast();
 
   async function loadFile(file: File) {
     setError(null);
@@ -46,6 +49,7 @@ export function InputPanel({
         setDocx(null);
         setText(await file.text());
         setTitle(file.name.replace(/\.[^.]+$/, ''));
+        toast(he.input.fileLoaded.replace('{name}', file.name), { tone: 'success' });
         return;
       }
       if (lower.endsWith('.docx')) {
@@ -59,6 +63,7 @@ export function InputPanel({
         setText(t);
         setTitle(file.name.replace(/\.[^.]+$/, ''));
         setDocx({ bytes, name: file.name, text: t });
+        toast(he.input.fileLoaded.replace('{name}', file.name), { tone: 'success' });
         return;
       }
       setDocx(null);
@@ -72,12 +77,18 @@ export function InputPanel({
       }
       setText(data.text);
       setTitle(data.title);
+      toast(he.input.fileLoaded.replace('{name}', file.name), { tone: 'success' });
     } catch {
       setError(he.errors.network);
     } finally {
       setBusy(false);
     }
   }
+
+  const loadFileRef = useRef(loadFile);
+  useEffect(() => {
+    loadFileRef.current = loadFile;
+  });
 
   // Window-wide drag & drop (desktop)
   useEffect(() => {
@@ -97,7 +108,7 @@ export function InputPanel({
       depth = 0;
       setDragging(false);
       const f = e.dataTransfer?.files?.[0];
-      if (f) loadFile(f);
+      if (f) loadFileRef.current(f);
     };
     window.addEventListener('dragenter', enter);
     window.addEventListener('dragleave', leave);
@@ -113,42 +124,69 @@ export function InputPanel({
 
   const tooShort = words > 0 && words < MIN_WORDS;
   const tooLong = words > MAX_WORDS;
+  const canAnalyze = words >= MIN_WORDS && !tooLong && !busy;
+  const fmt = (n: number) => n.toLocaleString('he-IL');
+  const textError = tooLong ? he.errors.tooLong.replace('{max}', fmt(MAX_WORDS)) : undefined;
+  const analyze = () => {
+    if (!canAnalyze) return;
+    if (docx && docx.text === text) onAnalyzeDocx(docx.bytes, docx.name, title, context);
+    else onAnalyze(text, title, context);
+  };
 
   return (
-    <div className="mx-auto w-full max-w-[760px] px-4 py-6 md:py-10">
-      <h1 className="mb-1 text-[22px] font-bold">{he.input.title}</h1>
-      <p className="mb-5 text-muted">{he.tagline}</p>
+    <div className="mx-auto w-full max-w-[800px] px-4 py-6 md:py-10">
+      <h1 className="text-title font-bold">{he.input.title}</h1>
+      <p className="mt-1 text-muted">{he.tagline}</p>
+
+      <ol aria-label={he.input.stepsTitle} className="mt-4 hidden gap-2 text-sm sm:grid sm:grid-cols-3">
+        {[he.input.step1, he.input.step2, he.input.step3].map((t, i) => (
+          <li key={i} className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
+            <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-fg">
+              {i + 1}
+            </span>
+            {t}
+          </li>
+        ))}
+      </ol>
 
       {mounted && !hasKey(settings) && (
-        <div className="card mb-4 flex items-start gap-3 border-s-4 !border-s-warning p-3 text-[14px]">
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-border border-s-4 border-s-warning bg-surface p-3 text-sm">
           <IconInfo className="mt-0.5 shrink-0 text-warning" />
           <p>
-            עדיין לא חיברת ספק מודל, אז הניתוח יתבסס על כללים מקומיים בלבד (בלי הסברים והצעות ניסוח).{' '}
-            <Link href="/settings" className="font-semibold text-accent underline">
-              לחיבור ספק בהגדרות
+            {he.input.localOnlyNotice}{' '}
+            <Link href="/settings#access" className="font-semibold text-accent underline underline-offset-4">
+              {he.input.localOnlyLink}
             </Link>
           </p>
         </div>
       )}
 
-      <div className="card p-4 md:p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-surface-2 px-4 font-semibold hover:border-accent"
-            disabled={busy}
-          >
-            <IconUpload />
+      <form
+        className="card mt-4 space-y-4 p-4 md:p-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          analyze();
+        }}
+      >
+        {/* File: button everywhere, drop target on desktop (the whole window also accepts drops) */}
+        <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border-strong bg-surface-2/60 px-4 py-5 text-center md:flex-row md:text-start">
+          <IconFile aria-hidden className="hidden size-8 shrink-0 text-muted md:block" />
+          <div className="min-w-0 flex-1">
+            <p className="hidden font-semibold md:block">
+              {he.input.dropTitle} <span className="font-normal text-muted">{he.input.dropOr}</span>
+            </p>
+            <p className="text-caption text-muted">{he.input.supportedFormats}</p>
+          </div>
+          <Button onClick={() => fileRef.current?.click()} disabled={busy} icon={<IconUpload />} className="w-full md:w-auto">
             {busy ? he.progress.reading : he.input.uploadButton}
-          </button>
-          <span className="hidden text-[13px] text-muted md:inline">{he.input.uploadHint}</span>
-          <span className="text-[13px] text-muted">{he.input.supportedFormats}</span>
+          </Button>
           <input
             ref={fileRef}
             type="file"
             accept=".txt,.md,.docx,.pdf"
             className="hidden"
+            tabIndex={-1}
+            aria-hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) loadFile(f);
@@ -156,83 +194,100 @@ export function InputPanel({
             }}
           />
         </div>
+        {error && (
+          <p className="text-sm font-semibold text-danger" role="alert">
+            {error}
+          </p>
+        )}
 
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="כותרת (לא חובה)"
-          className="mb-2 w-full rounded-md border border-border bg-surface px-3 py-2 font-semibold"
-          dir="auto"
-        />
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={he.input.placeholder}
-          dir="auto"
-          rows={12}
-          className="doc w-full resize-y rounded-md border border-border bg-surface px-3 py-2 !text-[17px]"
-          aria-label="טקסט לניתוח"
-        />
+        <Field label={he.input.titleLabel} hint={he.input.titleHint}>
+          {(p) => <Input {...p} value={title} onChange={(e) => setTitle(e.target.value)} dir={title ? 'auto' : 'rtl'} className="font-semibold" />}
+        </Field>
 
-        <details className="mt-3">
-          <summary className="cursor-pointer text-[14px] font-semibold text-muted">{he.input.contextLabel}</summary>
-          <textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            placeholder={he.input.contextPlaceholder}
-            rows={2}
-            dir="auto"
-            className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-[14px]"
-          />
+        <Field
+          label={he.input.textLabel}
+          hint={he.input.textHint.replace('{min}', String(MIN_WORDS)).replace('{max}', fmt(MAX_WORDS))}
+          error={textError}
+          labelAside={
+            <span className="text-caption tabular-nums text-muted">
+              {he.input.wordCount.replace('{count}', fmt(words))} · {he.input.charCount.replace('{count}', fmt(chars))}
+            </span>
+          }
+        >
+          {(p) => (
+            <Textarea
+              {...p}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={he.input.placeholder}
+              dir={text ? 'auto' : 'rtl'}
+              rows={12}
+              className="doc !text-h2"
+            />
+          )}
+        </Field>
+
+        {!text && (
+          <p className="text-sm text-muted">
+            {he.empty.input}{' '}
+            <button type="button" onClick={() => setText(SAMPLE)} className="min-h-11 font-semibold text-accent underline underline-offset-4 hover:no-underline">
+              {he.input.sampleButton}
+            </button>
+          </p>
+        )}
+
+        <details className="group rounded-lg border border-border px-3">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">{he.input.contextLabel}</summary>
+          <div className="pb-3">
+            <Textarea
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              placeholder={he.input.contextPlaceholder}
+              aria-label={he.input.contextLabel}
+              rows={2}
+              dir={context ? 'auto' : 'rtl'}
+              className="text-sm"
+            />
+          </div>
         </details>
 
         {docx && (
-          <p className={`mt-2 rounded-md px-3 py-2 text-[13px] ${docx.text === text ? 'bg-accent/10' : 'bg-surface-2 text-muted'}`}>
-            {docx.text === text ? (
-              <>
-                קובץ Word: <strong dir="auto">{docx.name}</strong>. התוצאות יוצגו על המסמך המעוצב עצמו, ואפשר יהיה להוריד אותו אחרי עריכה.
-              </>
-            ) : (
-              'שינית את הטקסט, ולכן הניתוח יוצג כטקסט רגיל ולא בתצוגת Word.'
-            )}
+          <p className={`rounded-md px-3 py-2 text-caption ${docx.text === text ? 'bg-accent-soft' : 'bg-surface-2 text-muted'}`}>
+            {docx.text === text ? he.input.docxKept.replace('{name}', docx.name) : he.input.docxChanged}
           </p>
         )}
-        {error && <p className="mt-3 text-[14px] text-danger" role="alert">{error}</p>}
-        {tooShort && <p className="mt-3 text-[14px] text-muted">{he.errors.tooShort}</p>}
-        {tooLong && <p className="mt-3 text-[14px] text-danger">{he.errors.tooLong.replace('{max}', MAX_WORDS.toLocaleString('he-IL'))}</p>}
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            disabled={words < MIN_WORDS || tooLong || busy}
-            onClick={() =>
-              docx && docx.text === text ? onAnalyzeDocx(docx.bytes, docx.name, title, context) : onAnalyze(text, title, context)
-            }
-            className="min-h-11 rounded-md bg-accent px-6 font-bold text-accent-fg disabled:opacity-40"
-          >
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <Button type="submit" variant="primary" size="lg" disabled={!canAnalyze} aria-describedby={!canAnalyze && tooShort ? 'need-more' : undefined} className="w-full sm:w-auto">
             {he.input.analyzeButton}
-          </button>
-          {!text && (
-            <button type="button" onClick={() => setText(SAMPLE)} className="min-h-11 px-2 font-semibold text-accent underline-offset-4 hover:underline">
-              {he.input.sampleButton}
-            </button>
-          )}
+          </Button>
           {text && (
-            <button type="button" onClick={() => { setText(''); setTitle(''); setDocx(null); }} className="min-h-11 px-2 text-muted hover:text-text">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setText('');
+                setTitle('');
+                setDocx(null);
+              }}
+            >
               {he.input.clearButton}
-            </button>
+            </Button>
           )}
-          <span className="ms-auto text-[13px] tabular-nums text-muted">{he.input.wordCount.replace('{count}', words.toLocaleString('he-IL'))}</span>
+          {tooShort && (
+            <p id="need-more" className="text-sm text-muted">
+              {he.input.needMoreWords.replace('{count}', String(MIN_WORDS - words))}
+            </p>
+          )}
         </div>
-      </div>
+      </form>
 
-      <p className="mt-6 text-[13px] leading-relaxed text-muted">
+      <p className="mt-6 text-caption leading-relaxed text-muted">
         <strong>{he.disclaimer.title}:</strong> {he.disclaimer.body}
       </p>
 
       {dragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 backdrop-blur-sm">
-          <div className="rounded-2xl border-2 border-dashed border-accent px-10 py-8 text-xl font-bold text-accent">שחררו כאן את הקובץ</div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 backdrop-blur-sm" aria-hidden>
+          <div className="rounded-2xl border-2 border-dashed border-accent px-10 py-8 text-xl font-bold text-accent">{he.input.dropRelease}</div>
         </div>
       )}
     </div>

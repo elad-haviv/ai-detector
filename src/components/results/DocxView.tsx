@@ -133,7 +133,7 @@ export function DocxView({
 
   return (
     <div>
-      <div className="mb-2 flex items-center gap-2 text-[13px]">
+      <div className="mb-2 flex items-center gap-2 text-caption">
         <span className="text-muted">תצוגת Word:</span>
         {(['page', 'flow'] as const).map((m) => (
           <button

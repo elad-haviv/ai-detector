@@ -52,13 +52,15 @@ export function ScoreRing({ value, size = 96, stroke = 8, pending }: { value: nu
 
 export function BandLegend() {
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-muted">
+    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text">
       {([1, 2, 3] as Band[]).map((b) => (
-        <span key={b} className="flex items-center gap-1">
-          <span className={`sent b${b} !cursor-default px-1`}>אבג</span>
+        <li key={b} className="flex items-center gap-1">
+          <span aria-hidden className={`sent b${b} !cursor-default px-1`}>
+            אבג
+          </span>
           {BAND_LABEL[b]}
-        </span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

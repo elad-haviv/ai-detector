@@ -9,13 +9,14 @@ UI language: Hebrew, `<html lang="he" dir="rtl">`. Analyzed text: every paragrap
 ## 1. Information Architecture
 
 ```
-/            ניתוח (Analyze): input → progress → results/editor (one workspace)
-/history     היסטוריה: list of past analyses (localStorage/IndexedDB)
-/settings    הגדרות: provider, API key, model, sensitivity, explanation language
+/              ניתוח (Analyze): input → progress → results/editor (one workspace)
+/history       היסטוריה: past analyses (localStorage + IndexedDB for .docx files)
+/settings      הגדרות: sections גישה (#access) · ניתוח (#analysis) · תצוגה (#display)
+/privacy /terms /accessibility   stubs until M3/M4 fill them
 (later) /account, /pricing
 ```
 
-Top bar (desktop) or bottom tab bar (mobile) has three entries: ניתוח · היסטוריה · הגדרות. The workspace has three states: **Empty/Input → Analyzing → Results (editable)**.
+**AppShell** (`src/components/AppShell.tsx`): skip link "דילוג לתוכן הראשי" → `<main id="main">`; `<header>` with logo, desktop `<nav aria-label="ניווט ראשי">` (`aria-current="page"` on the active link), and the **header status slot** (`data-slot="header-status"`): the access chip (`AccessChip`: provider name when a key exists, else "כללים מקומיים בלבד", links to `/settings#access`) and, from M3, the account button. `<footer>` with privacy · terms · accessibility statement links and a "הגדרות עוגיות" button that dispatches `kulmus:open-cookie-settings` (M3's banner listens; until then a toast explains). Mobile (<768px): bottom tab bar with the same three entries; the footer pads for it. The workspace has three states: **Input → Analyzing → Results (editable)**.
 
 ## 2. Layouts
 
@@ -81,39 +82,43 @@ Hebrew needs slightly more line-height than English. Keep 1.75 for mixed text. N
 
 ## 6. Design Tokens
 
-```css
-:root {
-  --bg:#FAF8F4; --surface:#FFFFFF; --surface-2:#F3EFE7; --border:#E3DDD1;
-  --text:#1F2328; --text-muted:#5C6370; --accent:#2B4C7E; --accent-fg:#FFFFFF;
-  --focus:#3B6FD8; --success:#2F6F5E; --warning:#9A6200; --danger:#A33A3A;
-  --hl-1-bg:#FDF1D6; --hl-1-line:#C99A2E;
-  --hl-2-bg:#F9DDB0; --hl-2-line:#B5701C;
-  --hl-3-bg:#F2C08F; --hl-3-line:#8A4510; --hl-3-badge:#8A4510;
-}
-.dark {
-  --bg:#14161A; --surface:#1C1F24; --surface-2:#23272E; --border:#30353D;
-  --text:#E8E6E1; --text-muted:#A0A6B0; --accent:#8FB0E6; --accent-fg:#0F1726;
-  --focus:#8FB0E6; --success:#7CC3AE; --warning:#E2B45C; --danger:#E08A8A;
-  --hl-1-bg:rgb(214 160 60/.16); --hl-1-line:#C9A35A;
-  --hl-2-bg:rgb(214 140 50/.26); --hl-2-line:#D9944A;
-  --hl-3-bg:rgb(214 120 40/.38); --hl-3-line:#F0A866; --hl-3-badge:#F0A866;
-}
-```
-Tailwind: `darkMode: 'class'` (default to `prefers-color-scheme`, overridable in Settings). Map the tokens in `theme.extend.colors` (`bg: 'var(--bg)'`, `hl1: { bg: 'var(--hl-1-bg)', line: 'var(--hl-1-line)' }`, …). In dark mode, the band-3 badge uses dark text (`--bg`).
+All tokens live in `src/app/globals.css` (`:root` light, `.dark` dark) and are exposed to Tailwind via `@theme inline` (`bg-surface`, `text-muted`, `border-border-strong`, `bg-accent-soft`, …). Values from the original palette, with these M1 additions and changes:
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--border` | #E3DDD1 | #30353D | decorative card edges only |
+| `--border-strong` | #8A8478 (3.5:1 on bg) | #737A86 (4.2:1) | every control edge (inputs, secondary buttons, segmented, radio cards) |
+| `--accent-soft` | accent @10% | accent @14% | selected nav item / chosen option tint |
+| `--warning` | **#8A5700** (was #9A6200; now ≥5.3:1 on surface-2) | #E2B45C | warning text |
+| `--danger-fg` | #FFF | #14161A | text on danger buttons |
+| `--shadow-lg` | soft | deep | dialogs, toasts |
+| `--radius-control/card/sheet` | 6 / 10 / 16px | | |
+
+Checked contrast: all text tokens ≥4.5:1 on `--bg`, `--surface`, `--surface-2` in both themes; `--focus` (#3B6FD8 / #8FB0E6) and `--border-strong` ≥3:1.
+
+**Type scale** is rem-based so the text-size setting scales everything: `text-micro` 11, `text-xs` 12, `text-caption` 13, `text-sm` 14, `text-ui` 15 (body), `text-base` 16, `text-h2` 17, `text-lg` 18, `text-title` 22. Never use `text-[Npx]`.
+
+**Text size** (Settings → תצוגה): `normal | large | larger` → root class `text-size-large` (112.5%) / `text-size-larger` (125%), applied before paint by the inline script in `layout.tsx` and kept in sync by `useApplyTextSize`.
+
+**Focus**: `:focus-visible` = 2px `--focus` outline, 2px offset (inset on the tab bar). **Motion**: `prefers-reduced-motion` disables animations/transitions and JS smooth scrolling.
 
 ## 7. Components
 
-- **AppShell**: header / tab bar, theme toggle.
-- **InputPanel**: Textarea (autosize, `dir="auto"`), FileDropZone, FilePickerButton, word/char counter, "נתח" primary button (disabled < 50 words, with a hint).
-- **ProgressPanel**: per-chunk list. Each row has its chunk index, a status icon (pending / running / done / failed + retry), and a mini bar. Includes an overall bar and a cancel button. Heuristic results render immediately. LLM results stream in per chunk.
-- **ScoreCard**: ring/meter 0–100, confidence label (נמוך/בינוני/גבוה), one-line plain summary, band legend.
-- **DocumentView**: paragraphs → SentenceSpan (band, badge, selected, edited states). Contenteditable in edit mode.
-- **Inspector / SentenceSheet** (same content component): probability + band, PatternList (PatternChip: category icon + name + one-line "why"), Explanation, RewriteCard (diff-style suggestion with **העתק** / **החל** / "הצע אחר"), prev/next.
-- **FilterBar**: 7 category toggle chips (אוצר מילים, מבנה, טון, עיצוב, רטוריקה, ציטוט, מילוי) with counts. ThresholdSlider (0–100, default from sensitivity, live re-render).
-- **SummaryPanel**: Top patterns (name × count, clickable → filters the doc), StatTiles: burstiness (sentence-length variance, with a short "human texts vary more" hint), lexical diversity (MTLD/TTR), avg sentence length, sentence count.
-- **HistoryList**: cards with title, date, score pill, language, word count. Actions: open, duplicate, delete. Has a search box.
-- **SettingsForm**: ProviderSelect (4 radio cards), ApiKeyField (masked, show/hide, "נשמר מקומית בדפדפן בלבד" notice, test-connection button), ModelSelect (fetched list + free text), Sensitivity (שמרני/מאוזן/רגיש → threshold 70/55/40), ExplanationLanguage (עברית/English/כשפת הטקסט), theme.
-- Primitives: Button (primary/secondary/ghost), IconButton, Chip, Pill, Toast, Dialog, BottomSheet, Drawer, Tooltip, Skeleton, Kbd.
+Reusable primitives in `src/components/ui/` (import from `@/components/ui`):
+
+| Component | Key props | Notes |
+|---|---|---|
+| `Button` | `variant` primary·secondary·ghost·danger·link, `size` sm·md·lg, `icon`, `iconOnly` (+`aria-label`) | ≥44px at md. A `text-<colour>` in `className` replaces the variant colour. `buttonClass()` and `ButtonLink` (next/link) share the look. |
+| `Field` | `label`, `hint`, `error`, `id?`, `labelAside`, `children(props)` | Render-prop: spread `props` (`id`, `aria-describedby` = hint+error, `aria-invalid`) on the control. |
+| `Input` / `Textarea` / `Select` | native props | `.control` style: `--border-strong`, 44px min height, red border when `aria-invalid`. |
+| `Checkbox` | `label`, `hint`, `checked`, `onChange(bool)` | |
+| `Card` / `Section` | `padding`; `Section`: `id`, `title`, `intro` | `Section` = `<section aria-labelledby>` + h2, `id` is the anchor. |
+| `SegmentedControl` | `legend`, `hint`, `value`, `options[{value,label,description}]`, `onChange`, `variant` segmented·cards, `columns` | Native radios in a `<fieldset>`: arrow keys and RTL for free. |
+| `Dialog` | `open`, `onClose`, `title`, `description`, `footer`, `variant` center·sheet·full, `initialFocus` | Native `<dialog>.showModal()`: inert page, Esc, backdrop click, focus returns to the opener. |
+| `ConfirmDialog` | `open`, `title`, `body`, `confirmLabel`, `danger`, `onConfirm`, `onCancel` | Cancel has initial focus. |
+| `ToastProvider` / `useToast()` | `toast(message, {tone, action, duration})` | Mounted in AppShell; region is `role="status"` (polite), never steals focus. |
+
+Screen components: **InputPanel** (3-step guide, local-only notice, drop zone + file button, title/text `Field`s with word·char counter, sample link, context disclosure, primary "לנתח את הטקסט" with "חסרות עוד N מילים" hint), **ProgressList** (`role=status` text + `progressbar`), **ResultsView** (sticky toolbar with always-visible band legend and "החשוד הקודם/הבא" buttons + "N מתוך M"; a polite live region announces the selected sentence; the document has one roving tab stop, Enter/Space selects; mobile summary is a full-screen `Dialog`, paragraph rewrite a sheet `Dialog`), **Inspector**, **SummaryPanel**, **DocxView**, **History** (labelled search, count, per-item delete and clear-all through `ConfirmDialog`, toast after deleting, empty state with CTA), **Settings** (three `Section`s with a sticky in-page nav; provider radio cards, sensitivity/language/theme/text-size segmented controls).
 
 ## 8. States
 
@@ -122,7 +127,7 @@ Tailwind: `darkMode: 'class'` (default to `prefers-color-scheme`, overridable in
 - **Partial failure**: failed chunks get a neutral grey hatched background + "נכשל · נסה שוב". The score is computed from the done chunks, with a notice.
 - **Errors**: invalid key (401) → link to Settings; rate limit → auto-retry countdown; network → retry; unsupported/oversized/scanned PDF with no text → explain + suggest pasting. Errors appear inline near the source, not as modal walls. Messages are in Hebrew, with the provider's message collapsible.
 - **No findings**: "לא נמצאו משפטים מעל הסף" + a suggestion to lower the threshold.
-- **History empty**: "עדיין אין ניתוחים שמורים".
+- **History empty**: icon + "עוד לא ניתחת טקסטים…" + "לניתוח הראשון" button. Search with no match: "לא נמצאו ניתוחים…".
 
 ## 9. Micro-interactions
 

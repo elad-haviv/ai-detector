@@ -130,6 +130,8 @@ export interface Settings {
   sensitivity: 'low' | 'medium' | 'high';
   explanationLanguage: 'he' | 'en' | 'auto';
   theme: 'system' | 'light' | 'dark';
+  /** UI text size: applied as a root class (text-size-large / text-size-larger). */
+  textSize: 'normal' | 'large' | 'larger';
   alwaysShowPercent: boolean;
 }
 

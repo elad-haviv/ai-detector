@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sensitivity: 'medium',
   explanationLanguage: 'he',
   theme: 'system',
+  textSize: 'normal',
   alwaysShowPercent: false,
 };
 
@@ -92,6 +93,15 @@ export function useApplyTheme(theme: Settings['theme']) {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, [theme]);
+}
+
+// --- text size ---
+export function useApplyTextSize(size: Settings['textSize']) {
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('text-size-large', size === 'large');
+    root.classList.toggle('text-size-larger', size === 'larger');
+  }, [size]);
 }
 
 // --- history ---

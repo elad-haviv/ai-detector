@@ -17,8 +17,8 @@ export const viewport: Viewport = {
   ],
 };
 
-// Apply the saved theme before paint to avoid a light flash in dark mode.
-const themeScript = `try{var s=JSON.parse(localStorage.getItem('kulmus:settings:v1')||'{}');var t=s.theme||'system';if(t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
+// Apply the saved theme and text size before paint to avoid a flash.
+const themeScript = `try{var s=JSON.parse(localStorage.getItem('kulmus:settings:v1')||'{}');var t=s.theme||'system';var r=document.documentElement;if(t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))r.classList.add('dark');if(s.textSize==='large'||s.textSize==='larger')r.classList.add('text-size-'+s.textSize)}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

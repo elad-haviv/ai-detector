@@ -26,7 +26,7 @@ function HighlightedText({ s, r }: { s: Sentence; r: SentenceResult }) {
 
 function Signal({ label, value }: { label: string; value?: number }) {
   return (
-    <div className="flex items-center gap-2 text-[13px]">
+    <div className="flex items-center gap-2 text-caption">
       <span className="w-24 shrink-0 text-muted">{label}</span>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
         {value !== undefined && <div className="h-full rounded-full bg-accent" style={{ width: `${value}%` }} />}
@@ -69,10 +69,10 @@ export function Inspector({
   const patterns = result.patterns.map((id) => PATTERN_BY_ID[id]).filter(Boolean);
 
   return (
-    <div className="fade-in flex flex-col gap-4" aria-live="polite">
+    <div className="fade-in flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-[15px] font-bold">{he.inspector.title}</h2>
-        <span className="text-[13px] tabular-nums text-muted">
+        <h2 className="text-ui font-bold">{he.inspector.title}</h2>
+        <span className="text-caption tabular-nums text-muted">
           {total > 0 && index >= 0 ? `${index + 1}/${total}` : ''}
         </span>
         <div className="ms-auto flex gap-1">
@@ -89,12 +89,12 @@ export function Inspector({
       </div>
 
       <div className="flex items-end gap-3">
-        <div className="text-[40px] font-bold leading-none tabular-nums">{result.probability}%</div>
+        <div className="text-[2.5rem] font-bold leading-none tabular-nums">{result.probability}%</div>
         <div className="pb-1">
-          <div className="text-[13px] text-muted">{he.inspector.probability}</div>
+          <div className="text-caption text-muted">{he.inspector.probability}</div>
           {band > 0 && <span className={`badge b${band} !ms-0 !align-baseline`}>{BAND_LABEL[band]}</span>}
-          {result.status === 'pending' && <span className="text-[13px] text-muted">ממתין לניתוח המודל…</span>}
-          {result.status === 'failed' && <span className="text-[13px] text-danger">ניתוח המודל נכשל, מוצג ציון מקומי</span>}
+          {result.status === 'pending' && <span className="text-caption text-muted">ממתין לניתוח המודל…</span>}
+          {result.status === 'failed' && <span className="text-caption text-danger">ניתוח המודל נכשל, מוצג ציון מקומי</span>}
         </div>
       </div>
 
@@ -104,24 +104,24 @@ export function Inspector({
         <Signal label="כללים מקומיים" value={result.heuristic} />
       </div>
 
-      <blockquote dir="auto" className="doc rounded-md border-s-4 border-border bg-surface-2 p-3 !text-[16px]">
+      <blockquote dir="auto" className="doc rounded-md border-s-4 border-border bg-surface-2 p-3 !text-base">
         <HighlightedText s={sentence} r={result} />
       </blockquote>
 
       <section>
-        <h3 className="mb-2 text-[13px] font-bold text-muted">{he.inspector.patternsDetected}</h3>
+        <h3 className="mb-2 text-caption font-bold text-muted">{he.inspector.patternsDetected}</h3>
         {patterns.length === 0 ? (
-          <p className="text-[14px] text-muted">{he.inspector.noPatterns}</p>
+          <p className="text-sm text-muted">{he.inspector.noPatterns}</p>
         ) : (
           <ul className="space-y-2">
             {patterns.map((p) => (
               <li key={p.id} className="rounded-md border border-border p-2.5">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{p.nameHe}</span>
-                  <span className="rounded-full bg-surface-2 px-2 text-[11px] text-muted">{he.categories[p.category]}</span>
+                  <span className="rounded-full bg-surface-2 px-2 text-micro text-muted">{he.categories[p.category]}</span>
                 </div>
-                <p className="mt-1 text-[13px] text-muted">{p.descriptionHe}</p>
-                <p className="mt-1 text-[13px]">
+                <p className="mt-1 text-caption text-muted">{p.descriptionHe}</p>
+                <p className="mt-1 text-caption">
                   <span className="font-semibold">איך לתקן: </span>
                   {p.fixHe}
                 </p>
@@ -133,17 +133,17 @@ export function Inspector({
 
       {result.explanation && (
         <section>
-          <h3 className="mb-1 text-[13px] font-bold text-muted">{he.inspector.why}</h3>
-          <p dir="auto" className="text-[15px]">{result.explanation}</p>
+          <h3 className="mb-1 text-caption font-bold text-muted">{he.inspector.why}</h3>
+          <p dir="auto" className="text-ui">{result.explanation}</p>
         </section>
       )}
 
       <section>
-        <h3 className="mb-1 text-[13px] font-bold text-muted">{he.inspector.suggestedRewrite}</h3>
+        <h3 className="mb-1 text-caption font-bold text-muted">{he.inspector.suggestedRewrite}</h3>
         {result.rewrite ? (
           <div className="rounded-md border border-accent/40 p-3">
-            <p dir="auto" className="doc !text-[16px]">{result.rewrite}</p>
-            <p className="mt-2 text-[12px] text-muted">{he.inspector.rewriteNote}</p>
+            <p dir="auto" className="doc !text-base">{result.rewrite}</p>
+            <p className="mt-2 text-xs text-muted">{he.inspector.rewriteNote}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={() => onApply(result.rewrite!)} className="min-h-10 rounded-md bg-accent px-4 font-semibold text-accent-fg" title="a">
                 {he.inspector.apply}
@@ -163,7 +163,7 @@ export function Inspector({
             </div>
           </div>
         ) : (
-          <p className="text-[14px] text-muted">
+          <p className="text-sm text-muted">
             {result.status === 'heuristic-only' && !result.llm ? 'הצעות ניסוח זמינות אחרי חיבור ספק מודל.' : he.inspector.noRewrite}
           </p>
         )}
@@ -171,14 +171,14 @@ export function Inspector({
 
       {editing !== null && (
         <section>
-          <h3 className="mb-1 text-[13px] font-bold text-muted">עריכה ידנית</h3>
+          <h3 className="mb-1 text-caption font-bold text-muted">עריכה ידנית</h3>
           <textarea
             value={editing}
             onChange={(e) => setEditing(e.target.value)}
             dir="auto"
             rows={4}
             autoFocus
-            className="doc w-full rounded-md border border-border bg-surface p-2 !text-[16px]"
+            className="doc w-full rounded-md border border-border bg-surface p-2 !text-base"
           />
           <div className="mt-2 flex gap-2">
             <button
@@ -199,14 +199,14 @@ export function Inspector({
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         {editing === null && (
-          <button onClick={() => setEditing(sentence.text)} className="min-h-10 rounded-md px-3 text-[14px] font-semibold text-accent hover:bg-surface-2">
+          <button onClick={() => setEditing(sentence.text)} className="min-h-10 rounded-md px-3 text-sm font-semibold text-accent hover:bg-surface-2">
             עריכה ידנית
           </button>
         )}
-        <button onClick={onIgnore} className="min-h-10 rounded-md px-3 text-[14px] font-semibold text-muted hover:bg-surface-2 hover:text-text">
+        <button onClick={onIgnore} className="min-h-10 rounded-md px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-text">
           {result.ignored ? 'ביטול הסימון כתקין' : he.inspector.ignore}
         </button>
-        <button onClick={onRewriteParagraph} className="min-h-10 rounded-md px-3 text-[14px] font-semibold text-accent hover:bg-surface-2">
+        <button onClick={onRewriteParagraph} className="min-h-10 rounded-md px-3 text-sm font-semibold text-accent hover:bg-surface-2">
           {he.results.rewriteParagraph}
         </button>
       </div>

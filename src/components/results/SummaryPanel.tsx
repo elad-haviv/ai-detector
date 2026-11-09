@@ -4,13 +4,13 @@ import { he } from '@/lib/i18n/he';
 import type { PatternCategory } from '@/lib/patterns/catalog';
 import type { Progress } from '@/lib/runAnalysis';
 import type { Analysis } from '@/lib/types';
-import { BandLegend, CONFIDENCE_LABEL, ScoreRing, scoreBand } from './shared';
+import { CONFIDENCE_LABEL, ScoreRing, scoreBand } from './shared';
 
 export const CATEGORIES: PatternCategory[] = ['vocabulary', 'structure', 'tone', 'formatting', 'rhetoric', 'citation', 'filler'];
 
 function SignalRow({ label, value, note }: { label: string; value?: number; note?: string }) {
   return (
-    <div className="flex items-center gap-2 text-[12px]">
+    <div className="flex items-center gap-2 text-xs">
       <span className="w-28 shrink-0 text-muted">{label}</span>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
         {value !== undefined && <div className="h-full rounded-full bg-accent" style={{ width: `${value}%` }} />}
@@ -32,9 +32,9 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
       <div className="flex items-center gap-4">
         <ScoreRing value={o.probability} pending={local && pending} />
         <div>
-          <div className="text-[13px] text-muted">סבירות לכתיבה בסגנון AI</div>
-          <div className="text-[17px] font-bold">{local ? 'ניתוח מקומי בלבד' : band.label}</div>
-          <div className="text-[13px] text-muted">
+          <div className="text-caption text-muted">סבירות לכתיבה בסגנון AI</div>
+          <div className="text-h2 font-bold">{local ? 'ניתוח מקומי בלבד' : band.label}</div>
+          <div className="text-caption text-muted">
             {CONFIDENCE_LABEL[o.confidence]}
             {partial && ` · נותחו ${Math.round(coverage * 100)}% מהטקסט`}
             {pending && !partial && !local && ' · זמני'}
@@ -43,35 +43,35 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
       </div>
 
       {local ? (
-        <p className="mt-3 rounded-md bg-surface-2 p-2 text-[13px]">
+        <p className="mt-3 rounded-md bg-surface-2 p-2 text-caption">
           {pending
             ? 'מודל השפה עדיין קורא את הטקסט. עד שיחזרו תוצאות, המספר מבוסס רק על ביטויים מוכרים ואינו הערכה של הטקסט כולו.'
             : `המספר מבוסס רק על מדדי סגנון ועל ביטויים מוכרים (נמצאו ב-${hits} משפטים), בלי מודל שפה. זו אינדיקציה בלבד: טקסט AI "נקי" וקצר עלול לקבל כאן ציון נמוך. לניתוח מלא צריך לחבר ספק מודל בהגדרות.`}
         </p>
       ) : (
-        <p className="mt-3 text-[14px]">{band.description}</p>
+        <p className="mt-3 text-sm">{band.description}</p>
       )}
 
       {!local && (
-        <p className="mt-2 text-[13px] text-muted">
+        <p className="mt-2 text-caption text-muted">
           {Math.round((o.flaggedShare ?? 0) * 100)}% מהטקסט שנבדק נמצא במשפטים עם סבירות {HIGH_PROBABILITY}% ומעלה.
           {partial && ' הציון יתעדכן כשהניתוח יסתיים.'}
         </p>
       )}
 
       {analysis.overall.summary && !local && (
-        <p dir="auto" className="mt-2 border-t border-border pt-2 text-[14px] text-muted">
+        <p dir="auto" className="mt-2 border-t border-border pt-2 text-sm text-muted">
           {analysis.overall.summary}
         </p>
       )}
       {analysis.document && (
         <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-          <div className="text-[12px] font-semibold text-muted">ממה מורכב הציון</div>
+          <div className="text-xs font-semibold text-muted">ממה מורכב הציון</div>
           <SignalRow label="שיפוט המסמך כולו" value={analysis.document.llm} note={analysis.document.status === 'pending' ? 'בודק…' : analysis.document.status === 'failed' ? 'נכשל' : undefined} />
           <SignalRow label="מדד סגנון" value={analysis.document.style} note={analysis.document.features.sentences < 8 ? 'טקסט קצר, משקל נמוך' : undefined} />
           {analysis.document.decision !== undefined && <SignalRow label="מודל החלטה" value={analysis.document.decision} />}
           {(!!analysis.document.aiEvidence?.length || !!analysis.document.humanEvidence?.length) && (
-            <details className="pt-1 text-[12px]">
+            <details className="pt-1 text-xs">
               <summary className="cursor-pointer font-semibold text-muted">ראיות</summary>
               {!!analysis.document.aiEvidence?.length && (
                 <>
@@ -89,9 +89,9 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
           )}
         </div>
       )}
-      {dirty && <p className="mt-2 text-[13px] font-semibold text-warning">בוצעו שינויים. כדאי להריץ ניתוח מחדש.</p>}
+      {dirty && <p className="mt-2 text-caption font-semibold text-warning">בוצעו שינויים. כדאי להריץ ניתוח מחדש.</p>}
 
-      <details className="mt-3 text-[12px] text-muted">
+      <details className="mt-3 text-xs text-muted">
         <summary className="cursor-pointer font-semibold">מה המספר אומר?</summary>
         <p className="mt-1 leading-relaxed">
           זו הערכה, לא הוכחה, של עד כמה הטקסט כתוב בסגנון שמאפיין מודלי שפה. כתיבת AI מודרנית ניכרת בעיקר ברמת המסמך: משפטים ארוכים
@@ -100,9 +100,6 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
           מהשיפוט הכולל, כי משפט נקרא כחלק מהמסמך שלו.
         </p>
       </details>
-      <div className="mt-3">
-        <BandLegend />
-      </div>
     </div>
   );
 }
@@ -130,17 +127,17 @@ export function Filters({
   return (
     <div className="card space-y-4 p-4">
       <div>
-        <label htmlFor="thr" className="flex items-center justify-between text-[13px] font-semibold">
+        <label htmlFor="thr" className="flex items-center justify-between text-caption font-semibold">
           <span>{he.threshold.label}</span>
           <span className="tabular-nums">{threshold}%</span>
         </label>
         <input id="thr" type="range" min={0} max={95} step={5} value={threshold} onChange={(e) => setThreshold(+e.target.value)} className="mt-1 w-full" />
-        <p className="text-[12px] text-muted">
+        <p className="text-xs text-muted">
           {he.results.sentencesFlagged.replace('{flagged}', String(flaggedCount)).replace('{total}', String(analysis.sentences.length))}
         </p>
       </div>
       <div>
-        <div className="mb-2 text-[13px] font-semibold">{he.filters.byCategory}</div>
+        <div className="mb-2 text-caption font-semibold">{he.filters.byCategory}</div>
         <div className="flex flex-wrap gap-1.5">
           {CATEGORIES.map((c, i) => (
             <button
@@ -148,7 +145,7 @@ export function Filters({
               onClick={() => toggle(c)}
               aria-pressed={enabled.has(c)}
               title={`${i + 1}`}
-              className={`min-h-8 rounded-full border px-3 text-[13px] font-semibold ${
+              className={`min-h-8 rounded-full border px-3 text-caption font-semibold ${
                 enabled.has(c) ? 'border-accent bg-accent/10 text-text' : 'border-border text-muted line-through'
               }`}
             >
@@ -168,11 +165,11 @@ export function TopPatterns({ analysis, onPick }: { analysis: Analysis; onPick: 
   if (!top.length) return null;
   return (
     <div className="card p-4">
-      <div className="mb-2 text-[13px] font-semibold">דפוסים בולטים</div>
+      <div className="mb-2 text-caption font-semibold">דפוסים בולטים</div>
       <ul className="space-y-1">
         {top.map(([id, n]) => (
           <li key={id}>
-            <button onClick={() => onPick(id)} className="flex w-full items-center justify-between rounded px-1 py-1 text-start text-[14px] hover:bg-surface-2">
+            <button onClick={() => onPick(id)} className="flex w-full items-center justify-between rounded px-1 py-1 text-start text-sm hover:bg-surface-2">
               <span>{PATTERN_BY_ID[id].nameHe}</span>
               <span className="tabular-nums text-muted">×{n}</span>
             </button>
@@ -196,16 +193,16 @@ export function Stats({ analysis }: { analysis: Analysis }) {
   ];
   return (
     <div className="card p-4">
-      <div className="mb-2 text-[13px] font-semibold">{he.stats.title}</div>
+      <div className="mb-2 text-caption font-semibold">{he.stats.title}</div>
       <dl className="grid grid-cols-1 gap-3">
         {tiles.map((t) => (
           <div key={t.label} title={t.hint}>
-            <dt className="text-[12px] text-muted">{t.label}</dt>
+            <dt className="text-xs text-muted">{t.label}</dt>
             <dd className="flex items-baseline gap-2">
-              <span className="text-[18px] font-bold tabular-nums">{t.value}</span>
-              <span className="text-[12px] text-muted">{t.note}</span>
+              <span className="text-lg font-bold tabular-nums">{t.value}</span>
+              <span className="text-xs text-muted">{t.note}</span>
             </dd>
-            {t.hint && <p className="text-[11px] leading-snug text-muted">{t.hint}</p>}
+            {t.hint && <p className="text-micro leading-snug text-muted">{t.hint}</p>}
           </div>
         ))}
       </dl>
@@ -218,20 +215,21 @@ export function ProgressList({ progress, onCancel }: { progress: Progress; onCan
   const total = progress.chunks.length;
   const sentencesDone = progress.chunks.filter((c) => c.status === 'done').reduce((a, c) => a + c.size, 0);
   const sentencesTotal = progress.chunks.reduce((a, c) => a + c.size, 0);
+  const pct = total ? Math.round((done / total) * 100) : 0;
   return (
     <div className="card p-3">
-      <div className="mb-2 flex items-center justify-between text-[13px]">
-        <span className="font-semibold">
+      <div className="mb-2 flex items-center justify-between gap-2 text-caption">
+        <span className="font-semibold" role="status" aria-live="polite">
           {he.progress.analyzing.replace('{done}', String(sentencesDone)).replace('{total}', String(sentencesTotal))}
         </span>
-        <button onClick={onCancel} className="text-muted underline">
+        <button type="button" onClick={onCancel} className="min-h-9 rounded-md px-2 font-semibold text-muted underline hover:text-text">
           {he.progress.cancel}
         </button>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+      <div className="h-2 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-label={he.progress.analyzing.replace('{done}', String(sentencesDone)).replace('{total}', String(sentencesTotal))} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
         <div className="h-full bg-accent transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
       </div>
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-2 flex flex-wrap gap-1" aria-hidden>
         {progress.chunks.map((c, i) => (
           <span
             key={i}
