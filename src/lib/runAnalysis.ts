@@ -1,0 +1,192 @@
+'use client';
+import { HEURISTICS_VERSION, blend, computeStats, findHits, heuristicResults, heuristicScore, overallScore } from './heuristics';
+import { chunkSentences, detectLang, segment } from './segment';
+import { hasKey } from './store';
+import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, Lang, Sentence, SentenceResult, Settings } from './types';
+
+export type ChunkStatus = 'pending' | 'running' | 'done' | 'failed';
+export interface Progress {
+  chunks: { status: ChunkStatus; size: number; error?: string }[];
+}
+
+export function newId() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+export function explanationLang(s: Settings, text: string): Lang {
+  return s.explanationLanguage === 'auto' ? detectLang(text) : s.explanationLanguage;
+}
+
+/** Build an analysis with instant local results; LLM results are added by `enrich`. */
+export function initialAnalysis(text: string, title: string, context: string, settings: Settings): Analysis {
+  const sentences = segment(text);
+  const results = heuristicResults(sentences);
+  const llmOn = hasKey(settings);
+  if (llmOn) for (const r of Object.values(results)) r.status = 'pending';
+  return {
+    id: newId(),
+    title: title.trim() || shortTitle(sentences[0]?.text || '') || 'ללא כותרת',
+    createdAt: Date.now(),
+    context,
+    sentences,
+    results,
+    overall: overallScore(sentences, results),
+    stats: computeStats(sentences),
+    meta: {
+      provider: llmOn ? settings.provider : undefined,
+      model: llmOn ? settings.models[settings.provider] : undefined,
+      decisionModel: llmOn && settings.useDecisionModel && settings.keys.openrouter ? settings.decisionModel : undefined,
+      heuristicsVersion: HEURISTICS_VERSION,
+    },
+  };
+}
+
+function shortTitle(t: string): string {
+  if (t.length <= 50) return t.replace(/[.,:;]+$/, '');
+  const cut = t.slice(0, 50);
+  return cut.slice(0, cut.lastIndexOf(' ') > 20 ? cut.lastIndexOf(' ') : 50).replace(/[.,:;]+$/, '') + '…';
+}
+
+function contextFor(analysis: Analysis, chunk: Sentence[]): string {
+  const firstPara = chunk[0].paragraph;
+  const prev = analysis.sentences.filter((s) => s.paragraph === firstPara - 1).map((s) => s.text).join(' ');
+  return [analysis.context && `Author's note on the text: ${analysis.context}`, prev && `Previous paragraph: ${prev.slice(-600)}`]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function errorCode(msg?: string): 'missingKey' | 'invalidKey' | 'rateLimit' | 'badResponse' | 'network' | 'unknown' {
+  if (!msg) return 'unknown';
+  if (msg.includes('missing_key')) return 'missingKey';
+  if (msg.includes('invalid_key')) return 'invalidKey';
+  if (msg.includes('rate_limit')) return 'rateLimit';
+  if (msg.includes('bad_response')) return 'badResponse';
+  if (/fetch|network/i.test(msg)) return 'network';
+  return 'unknown';
+}
+
+/**
+ * Sends sentence chunks to /api/analyze (2 in flight), merging results as they arrive.
+ * `onlyIds` re-analyzes a subset (e.g. edited paragraphs).
+ */
+export async function enrich(
+  analysis: Analysis,
+  settings: Settings,
+  onUpdate: (a: Analysis, p: Progress) => void,
+  signal: AbortSignal,
+  onlyIds?: Set<number>,
+): Promise<Analysis> {
+  let a = analysis;
+  const targets = onlyIds ? a.sentences.filter((s) => onlyIds.has(s.id)) : a.sentences;
+  const chunks = chunkSentences(targets);
+  const progress: Progress = { chunks: chunks.map((c) => ({ status: 'pending', size: c.length })) };
+  const lang = explanationLang(settings, a.sentences.map((s) => s.text).join(' '));
+  const llmOverall: number[] = [];
+  let summary: string | undefined = a.overall.summary;
+
+  const emit = () => {
+    const ov = overallScore(a.sentences, a.results, llmOverall.length ? llmOverall.reduce((x, y) => x + y, 0) / llmOverall.length : undefined);
+    a = { ...a, overall: { ...ov, summary } };
+    onUpdate(a, { chunks: progress.chunks.map((c) => ({ ...c })) });
+  };
+  emit();
+
+  const runChunk = async (i: number) => {
+    const chunk = chunks[i];
+    progress.chunks[i].status = 'running';
+    emit();
+    const body: AnalyzeChunkRequest = {
+      provider: settings.provider,
+      apiKey: settings.keys[settings.provider],
+      model: settings.models[settings.provider],
+      sentences: chunk.map((s) => ({ id: s.id, text: s.text })),
+      context: contextFor(a, chunk),
+      explanationLanguage: lang,
+      decisionModel: a.meta.decisionModel,
+      openrouterKey: settings.keys.openrouter,
+    };
+    let data: AnalyzeChunkResponse | null = null;
+    let err: string | undefined;
+    for (let attempt = 0; attempt < 2 && !data; attempt++) {
+      try {
+        const res = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+        const json = (await res.json()) as AnalyzeChunkResponse & { error?: string };
+        if (res.ok) data = json;
+        else {
+          err = json.errors?.llm || json.error || `HTTP ${res.status}`;
+          if (res.status === 429) await new Promise((r) => setTimeout(r, 4000));
+          else if (res.status < 500) break;
+        }
+      } catch (e) {
+        if (signal.aborted) throw e;
+        err = e instanceof Error ? e.message : String(e);
+      }
+    }
+    const results = { ...a.results };
+    if (!data) {
+      progress.chunks[i] = { ...progress.chunks[i], status: 'failed', error: err };
+      for (const s of chunk) results[s.id] = { ...results[s.id], status: 'failed' };
+      a = { ...a, results };
+      emit();
+      return;
+    }
+    const llmById = new Map((data.llm?.sentences || []).map((x) => [Number(x.id), x]));
+    for (const s of chunk) {
+      const prev = results[s.id];
+      const l = llmById.get(s.id);
+      const dec = data.decisions?.[s.id];
+      const next: SentenceResult = {
+        ...prev,
+        llm: l ? clamp(l.ai_probability) : undefined,
+        decision: dec,
+        explanation: l?.explanation || undefined,
+        rewrite: l?.rewrite ?? null,
+        patterns: Array.from(new Set([...prev.hits.map((h) => h.patternId), ...((l?.patterns || []) as string[])])),
+        status: l || dec !== undefined ? 'done' : 'failed',
+      };
+      next.probability = blend(next);
+      results[s.id] = next;
+    }
+    if (data.llm?.overall) {
+      llmOverall.push(clamp(data.llm.overall.ai_probability));
+      if (!summary || chunks.length === 1 || i === 0) summary = data.llm.overall.summary;
+    }
+    progress.chunks[i] = {
+      ...progress.chunks[i],
+      status: data.llm ? 'done' : 'failed',
+      error: data.errors?.llm || data.errors?.decision,
+    };
+    a = { ...a, results };
+    emit();
+  };
+
+  let next = 0;
+  const worker = async () => {
+    while (next < chunks.length && !signal.aborted) await runChunk(next++);
+  };
+  await Promise.all([worker(), worker()]);
+  return a;
+}
+
+function clamp(n: unknown): number {
+  const v = Number(n);
+  return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 0;
+}
+
+/** Replace one sentence's text after the user applies a rewrite; recomputes local signals only. */
+export function applyRewrite(a: Analysis, id: number, text: string): Analysis {
+  const sentences = a.sentences.map((s) => (s.id === id ? { ...s, text, lang: detectLang(text), words: text.split(/\s+/).filter(Boolean).length } : s));
+  const hits = findHits(text);
+  const h = heuristicScore(hits);
+  const results = {
+    ...a.results,
+    [id]: { ...a.results[id], heuristic: h, hits, patterns: hits.map((x) => x.patternId), llm: undefined, decision: undefined, probability: h, explanation: undefined, rewrite: null, edited: true, status: 'heuristic-only' as const },
+  };
+  return { ...a, sentences, results, overall: { ...overallScore(sentences, results), summary: a.overall.summary }, stats: computeStats(sentences) };
+}
+
+export function documentText(a: Analysis): string {
+  const paras: string[][] = [];
+  for (const s of a.sentences) (paras[s.paragraph] ||= []).push(s.text);
+  return paras.filter(Boolean).map((p) => p.join(' ')).join('\n\n');
+}
