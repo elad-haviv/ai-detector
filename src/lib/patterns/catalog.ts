@@ -107,16 +107,21 @@ export const PATTERNS: Pattern[] = [
     id: 'testament',
     category: 'vocabulary',
     nameHe: '"עדות ל..." / "מעיד על"',
-    nameEn: 'Testament to',
+    nameEn: 'Testament / reminder',
     descriptionHe:
-      'הביטוי "stands as a testament" ומקביליו ("מהווה עדות ל", "עומד כעדות") מנפחים עובדה רגילה לכדי הוכחה למשהו גדול; זהו מטבע לשון אופייני לבינה מלאכותית.',
+      'הביטויים "stands as a testament" ו-"serves as a reminder" ומקביליהם ("מהווה עדות ל", "עומד כעדות", "מהווה תזכורת") מנפחים עובדה רגילה לכדי הוכחה או לקח גדול; זהו מטבע לשון אופייני לבינה מלאכותית.',
     fixHe: 'ציינו את העובדה עצמה, ואם יש קשר סיבתי - הסבירו אותו במפורש עם מקור.',
     weight: 0.45,
     source: ['wikipedia', 'humanizer'],
     regex: {
-      en: [String.raw`\btestament\s+to\b`],
+      en: [
+        String.raw`\btestament\s+to\b`,
+        String.raw`\b(?:enduring|lasting|living|powerful|stark)\s+testament\b`,
+        String.raw`\b(?:is|was|serves\s+as|served\s+as|stands\s+as|remains)\s+a\s+(?:\w+\s+)?reminder\s+(?:of|that)\b`,
+      ],
       he: [
         he('מהווה|מהווים|מהווות|מהוות|עומד|עומדת|עומדים|עומדות') + String.raw`\s+(?:כ)?עדות`,
+        he('מהווה|מהווים|מהוות|משמש|משמשת|משמשים|משמשות') + String.raw`\s+(?:כ)?תזכורת\s+(?:\p{L}+\s+)?(?:ל|לכך|כי|ש)`,
         he('עדות') + String.raw`\s+(?:חיה|ברורה|נוספת|מובהקת|ניצחת|מרשימה)\s+ל`,
         he('מעיד|מעידה|מעידים|מעידות') + String.raw`\s+(?:\p{L}+\s+)?על${HE}`,
       ],
@@ -144,17 +149,23 @@ export const PATTERNS: Pattern[] = [
     id: 'underscore-highlight',
     category: 'vocabulary',
     nameHe: '"מדגיש" / "ממחיש"',
-    nameEn: 'Underscore / highlight (verb)',
+    nameEn: 'Underscore / highlight / emphasizing',
     descriptionHe:
-      'הפעלים underscore ו-highlight (בעברית "מדגיש את", "ממחיש את", "מבליט את") משמשים מודלים כדי לייחס משמעות לעובדה בלי לבסס אותה.',
+      'הפעלים underscore, highlight ו-emphasizing (בעברית "מדגיש את", "ממחיש את", "מבליט את", "מדגיש את חשיבותו") נמצאים ברשימות המילים שמודלי שפה משתמשים בהן ביתר בכל הדורות (GPT-4 עד GPT-5), ומשמשים לייחס משמעות לעובדה בלי לבסס אותה.',
     fixHe: 'כתבו מה העובדה מראה בפועל ומי הסיק זאת, או השמיטו את הפועל.',
     weight: 0.3,
     source: ['wikipedia', 'humanizer'],
     regex: {
-      en: [String.raw`\bunderscor(?:e|es|ed|ing)\b`, String.raw`\bhighlight(?:s|ed)?\s+(?:the|its|their|how|that|a|an)\b`],
+      en: [
+        String.raw`\bunderscor(?:e|es|ed|ing)\b`,
+        String.raw`\bhighlight(?:s|ed)?\s+(?:the|its|their|his|her|how|that|a|an)\b`,
+        String.raw`\bhighlighting\b`,
+        String.raw`\bemphasi[sz]ing\b`,
+      ],
       he: [
         he('מדגיש|מדגישה|מדגישים|מדגישות|ממחיש|ממחישה|ממחישים|ממחישות|מבליט|מבליטה|מבליטים|מבליטות') +
           String.raw`\s+(?:את|כי|עד\s+כמה)${HE}`,
+        he('מדגיש|מדגישה|מדגישים|מדגישות|הדגיש|הדגישה|הדגישו') + String.raw`\s+את\s+(?:חשיבותו|חשיבותה|חשיבותם|משמעותו|משמעותה|מעמדו|מעמדה)${HE}`,
       ],
     },
   },
@@ -248,13 +259,29 @@ export const PATTERNS: Pattern[] = [
       en: [
         String.raw`\b(?:vibrant|enduring|seamless(?:ly)?|multifaceted|multi-faceted|holistic|transformative|ever-(?:evolving|changing|growing|shifting)|cutting-edge|game-changing|unparalleled|invaluable|robust\s+(?:framework|understanding|foundation|approach|discussion|ecosystem))\b`,
         String.raw`\b(?:the\s+)?interplay\s+(?:of|between)\b`,
+        String.raw`\bvaluable\s+(?:insights?|contributions?|perspectives?|resource)\b`,
       ],
       he: [
         he(
           String.raw`רב[\s-]?(?:ממדי|ממדית|ממדיים|ממדיות|גוני|גונית|גוניים|גוניות|פנים|פנים)|הוליסטי|הוליסטית|הוליסטיים|טרנספורמטיבי|טרנספורמטיבית|תוסס|תוססת|תוססים|תוססות|חסר\s+תקדים|חסרת\s+תקדים|פורץ\s+דרך|פורצת\s+דרך|פורצי\s+דרך|מהפכני|מהפכנית`,
         ),
         he('מתפתח|מתפתחת|מתפתחים|מתפתחות|משתנה|משתנים|משתנות') + String.raw`\s+(?:ללא\s+הרף|תדיר|בקצב\s+מסחרר|בהתמדה)${HE}`,
+        he(String.raw`תובנות\s+(?:חשובות|יקרות\s+ערך|מעמיקות|ייחודיות)|תרומה\s+יקרת\s+ערך`),
       ],
+    },
+  },
+  {
+    id: 'ai-vocabulary-2026',
+    category: 'vocabulary',
+    nameHe: 'אוצר מילים של מודלים חדשים',
+    nameEn: 'Newer-model vocabulary (dependable, quietly, prioritize...)',
+    descriptionHe:
+      'לפי ויקיפדיה, מודלים מאמצע 2026 (GPT-6) עברו לאוצר מילים אחר: dependable, quietly, universally, prioritize, echoed, לצד משפטים קצרים ושימוש רב בנקודה ובפסיק. כל מילה לבדה נפוצה גם אצל אנשים, ולכן המשקל נמוך מאוד.',
+    fixHe: 'בדקו אם המילה מוסיפה מידע; אם לא, החליפו בתיאור ספציפי או מחקו.',
+    weight: 0.08,
+    source: ['wikipedia'],
+    regex: {
+      en: [String.raw`\b(?:dependabl[ey]|quietly|universally|prioriti[sz](?:e|es|ed|ing)|echoed)\b`],
     },
   },
   {
@@ -400,7 +427,7 @@ export const PATTERNS: Pattern[] = [
     source: ['wikipedia', 'humanizer', 'stop-slop'],
     regex: {
       en: [
-        String.raw`\bnot\s+only\b[^.!?;]{1,140}?\bbut\s+(?:\w+\s+){0,2}?(?:also|rather|even)\b`,
+        String.raw`\bnot\s+only\b[^.!?;]{1,140}?\bbut\b`,
         String.raw`\bnot\s+(?:just|merely|simply)\b[^.!?;]{1,140}?\bbut\b`,
       ],
       he: [
@@ -424,6 +451,8 @@ export const PATTERNS: Pattern[] = [
         String.raw`\b(?:it|this|that)\s+(?:isn${AP}t|wasn${AP}t)\s+[^.!?;]{1,80}?[,;:—–.]\s*(?:it|this|that)(?:${AP}s|\s+is|\s+was)\b`,
         String.raw`\b(?:this|it)\s+(?:isn${AP}t|is\s+not|wasn${AP}t|was\s+not)\s+(?:really\s+|mainly\s+|just\s+)?about\b`,
         String.raw`\b(?:doesn${AP}t|does\s+not)\s+mean\b[^.!?]{1,80}[.;]\s*(?:it|this)\s+means\b`,
+        String.raw`\b(?:doesn${AP}t|does\s+not|don${AP}t|do\s+not)\s+(?:just|merely|simply|only)\s+[^.!?;]{1,80}?[;:—–]\s*(?:it|they|this)\b`,
+        String.raw`\b(?:it|this|that)(?:${AP}s|\s+is)\s+not\s+(?:just\s+)?an?\s+[^.!?;,]{1,40}?\s+but\s+an?\s+`,
       ],
       he: [
         heNoPrefix('זה|זו|זהו|זוהי') + String.raw`\s+(?:לא|אינו|אינה)\s+[^.!?;]{1,80}?[,;:—–.-]\s*(?:זה|זו|זהו|זוהי)${HE}`,
@@ -458,15 +487,21 @@ export const PATTERNS: Pattern[] = [
     id: 'negative-listing',
     category: 'structure',
     nameHe: 'רשימת שלילות',
-    nameEn: 'Negative listing (Not X. Not Y. Z.)',
+    nameEn: 'Negative listing (Not X. Not Y. Z. / no X, no Y, just Z)',
     descriptionHe:
-      'רצף משפטים קצרים שמונים מה הדבר אינו ("לא X. לא Y. אלא Z.") הוא "חשפנות רטורית" שמאפיינת טקסט מכונה.',
+      'רצף שלילות שמונה מה הדבר אינו ("לא X. לא Y. אלא Z.", "בלי X, בלי Y, רק Z") הוא "חשפנות רטורית" שמאפיינת טקסט מכונה.',
     fixHe: 'כתבו מה הדבר הוא, במשפט אחד.',
     weight: 0.5,
-    source: ['stop-slop', 'humanizer'],
+    source: ['wikipedia', 'stop-slop', 'humanizer'],
     regex: {
-      en: [String.raw`(?:^|[.!?]\s+)(?:it\s+(?:wasn${AP}t|isn${AP}t)\s+|not\s+)[^.!?]{1,40}\.\s+(?:it\s+(?:wasn${AP}t|isn${AP}t)\s+|not\s+)[^.!?]{1,40}\.`],
-      he: [String.raw`(?:^|[.!?]\s+)(?:זה\s+)?(?:לא|אין|אינו|אינה)\s+[^.!?]{1,40}\.\s+(?:זה\s+)?(?:לא|אין|אינו|אינה)\s+[^.!?]{1,40}\.`],
+      en: [
+        String.raw`(?:^|[.!?]\s+)(?:it\s+(?:wasn${AP}t|isn${AP}t)\s+|not\s+)[^.!?]{1,40}\.\s+(?:it\s+(?:wasn${AP}t|isn${AP}t)\s+|not\s+)[^.!?]{1,40}\.`,
+        String.raw`\b(?:no|not\s+an?|not)\s+[^.!?,;—–]{1,30},\s+(?:no|not\s+an?|not)\s+[^.!?,;—–]{1,30}(?:,\s+(?:no|not\s+an?|not)\s+[^.!?,;—–]{1,30})?\s*[,;—–]\s*(?:just|only|simply)\b`,
+      ],
+      he: [
+        String.raw`(?:^|[.!?]\s+)(?:זה\s+)?(?:לא|אין|אינו|אינה)\s+[^.!?]{1,40}\.\s+(?:זה\s+)?(?:לא|אין|אינו|אינה)\s+[^.!?]{1,40}\.`,
+        heNoPrefix('לא|בלי|אין') + String.raw`\s+[^.!?,;—–]{1,30},\s*(?:לא|בלי|אין)\s+[^.!?,;—–]{1,30}(?:,\s*(?:לא|בלי|אין)\s+[^.!?,;—–]{1,30})?\s*[,;—–-]\s*(?:רק|פשוט)${HE}`,
+      ],
     },
   },
   {
@@ -510,10 +545,10 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'קצב אחיד',
     nameEn: 'Metronomic sentence rhythm',
     descriptionHe:
-      'משפטים רצופים באורך כמעט זהה ובמבנה זהה יוצרים קצב מכני; כתיבה אנושית מחליפה בין משפטים קצרים וארוכים. מזוהה סטטיסטית.',
+      'משפטים רצופים באורך כמעט זהה ובמבנה זהה יוצרים קצב מכני; כתיבה אנושית מחליפה בין משפטים קצרים וארוכים. לפי ויקיפדיה, מודלים מאמצע 2026 כותבים משפטים קצרים של 8–20 מילים כמעט בלבד, עם נקודות ופסיקים בלבד. מזוהה סטטיסטית.',
     fixHe: 'גוונו: חברו שני משפטים קצרים או פצלו משפט ארוך.',
     weight: 0.2,
-    source: ['stop-slop', 'humanizer'],
+    source: ['wikipedia', 'stop-slop', 'humanizer'],
   },
   {
     id: 'repeated-openings',
@@ -557,6 +592,41 @@ export const PATTERNS: Pattern[] = [
     fixHe: 'בחרו מונח אחד והשתמשו בו בעקביות.',
     weight: 0.2,
     source: ['wikipedia'],
+  },
+  {
+    id: 'rather-than-contrast',
+    category: 'structure',
+    nameHe: '"Y ולא X" / "במקום פשוט..."',
+    nameEn: 'Reversed parallelism (Y rather than X)',
+    descriptionHe:
+      'גרסה הפוכה של ההקבלה השלילית ("Rather than simply retelling..., the film...", "a bridge rather than a replacement") נפוצה במיוחד בפלט של מודלים מ-2026. "rather than" עצמו נפוץ מאוד בכתיבה אנושית, ולכן נתפס רק בפתיחת משפט או עם "simply/merely", ובמשקל נמוך.',
+    fixHe: 'כתבו מה הדבר עושה, בלי להעמיד מולו חלופה שאיש לא הציע.',
+    weight: 0.15,
+    source: ['wikipedia'],
+    regex: {
+      en: [
+        String.raw`(?:^|[.!?]\s+)rather\s+than\b`,
+        String.raw`\brather\s+than\s+(?:simply|merely|just|only)\b`,
+      ],
+      he: [
+        heOpen(String.raw`במקום\s+(?:פשוט|רק|סתם|אך\s+ורק)\s+ל`),
+      ],
+    },
+  },
+  {
+    id: 'title-as-entity-lead',
+    category: 'structure',
+    nameHe: 'הגדרת הכותרת כישות',
+    nameEn: 'Lead treating a list/title as an entity',
+    descriptionHe:
+      'מודלים פותחים טקסט בהגדרה של כותרת הרשימה או המושג כאילו הייתה ישות בעולם ("The List of X is a curated compilation of...", "X refers to..."), במקום לדבר ישר על הנושא.',
+    fixHe: 'פתחו בנושא עצמו ("שירים רבים על מקסיקו..."), לא בהגדרה של הכותרת.',
+    weight: 0.3,
+    source: ['wikipedia'],
+    regex: {
+      en: [String.raw`\b(?:is|are)\s+(?:a|an|the)\s+(?:curated|comprehensive|chronological|carefully\s+curated)\s+(?:list|compilation|collection|catalog(?:ue)?|overview)\s+of\b`],
+      he: [he(String.raw`(?:הוא|היא|הינו|הינה)\s+(?:אוסף|ליקוט|רשימה)\s+(?:אצור|אצורה|כרונולוגית\s+ומקיפה)`)],
+    },
   },
 
   /* ================================================================ */
@@ -757,13 +827,14 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'שפה שיווקית',
     nameEn: 'Promotional / puffery language',
     descriptionHe:
-      'מילים כמו nestled, breathtaking, stunning, renowned, rich heritage ("שוכן בלב", "עוצר נשימה", "מרהיב", "בעל שם עולמי") הופכות טקסט עיוני למודעת פרסומת.',
+      'מילים כמו nestled, breathtaking, renowned, groundbreaking, exemplifies, rich heritage ("שוכן בלב", "עוצר נשימה", "מרהיב", "בעל שם עולמי") הופכות טקסט עיוני למודעת פרסומת. לפי ויקיפדיה זה אופייני בעיקר למודלים של 2023–2025; מודלים חדשים פחות "מתפרסמים".',
     fixHe: 'תארו מה הדבר הוא בפועל, בלשון ניטרלית ועם נתונים.',
     weight: 0.5,
     source: ['wikipedia', 'humanizer'],
     regex: {
       en: [
-        String.raw`\b(?:nestled|breathtaking|stunning|must-visit|world-class|renowned|awe-inspiring|picturesque|unparalleled|second\s+to\s+none|state-of-the-art)\b`,
+        String.raw`\b(?:nestled|breathtaking|stunning|must-visit|world-class|renowned|awe-inspiring|picturesque|unparalleled|second\s+to\s+none|state-of-the-art|groundbreaking|exemplif(?:y|ies|ied|ying))\b`,
+        String.raw`\b(?:worth\s+visiting|offers?\s+visitors|a\s+fascinating\s+glimpse)\b`,
         String.raw`\brich\s+(?:cultural\s+)?(?:heritage|history|tradition|tapestry)\b`,
         String.raw`\b(?:natural\s+beauty|in\s+the\s+heart\s+of|diverse\s+array\s+of|boasts?\s+(?:a|an|over|more\s+than))\b`,
       ],
@@ -780,14 +851,23 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'ניפוח חשיבות',
     nameEn: 'Inflated significance / legacy',
     descriptionHe:
-      'מודלים מצרפים לעובדה רגילה טענה שהיא "מסמנת נקודת מפנה", "מותירה חותם בל יימחה" או "מעצבת את העתיד" - חשיבות שלא הוכחה.',
+      'מודלים מצרפים לעובדה רגילה טענה שהיא "מסמנת נקודת מפנה", "משקפת מגמה רחבה", "עוררה דיון ציבורי" או "מותירה חותם בל יימחה" - חשיבות או הקשר רחב שלא הוכחו, לעיתים אפילו אחרי הודאה שהנושא שולי.',
     fixHe: 'השאירו את העובדה עצמה וסיימו בפרט הקונקרטי האחרון.',
     weight: 0.5,
     source: ['wikipedia', 'humanizer'],
     regex: {
       en: [
-        String.raw`\bmark(?:s|ed|ing)?\s+(?:a|an)\s+(?:pivotal|significant|major|key|crucial|turning|watershed|defining|new)\s+(?:moment|point|milestone|chapter|era|shift|turning\s+point)\b`,
-        String.raw`\b(?:watershed\s+moment|turning\s+point|indelible\s+mark|lasting\s+(?:impact|legacy|impression)|enduring\s+legacy|deeply\s+rooted|reflects?\s+a\s+broader|continues?\s+to\s+(?:captivate|inspire|resonate|shape))\b`,
+        String.raw`\bmark(?:s|ed|ing)?\s+(?:a|an|the)\s+(?:pivotal|significant|major|key|crucial|turning|watershed|defining|new)\s+(?:moment|point|milestone|chapter|era|shift|turning\s+point)\b`,
+        String.raw`\b(?:watershed\s+moment|turning\s+point|focal\s+point|indelible\s+mark|lasting\s+(?:impact|legacy|impression)|enduring\s+legacy|deeply\s+rooted|continues?\s+to\s+(?:captivate|inspire|resonate|shape))\b`,
+        String.raw`\b(?:pivotal|crucial|vital|defining|key)\s+moment\b`,
+        String.raw`\brepresent(?:s|ed|ing)?\s+a\s+(?:\w+\s+)?shift\b`,
+        String.raw`\b(?:reflect(?:s|ed|ing)?|part\s+of|contribut(?:es|ed|ing)\s+to)\s+(?:a|the)\s+broader\s+(?:\w+\s+)?(?:trend|movement|shift|history|context|pattern|narrative|debate|discussion|effort)s?\b`,
+        String.raw`\b(?:highlight(?:s|ed|ing)?|underscor(?:es|ed|ing)|emphasi[sz](?:es|ed|ing))\s+(?:its|their|his|her|the)\s+(?:\w+\s+)?(?:importance|significance|relevance)\b`,
+        String.raw`\bsymboli[sz](?:e|es|ed|ing)\s+(?:its|their|the)\s+(?:ongoing|enduring|lasting|continued)\b`,
+        String.raw`\b(?:generated|sparked|prompted|fueled|fuelled)\s+(?:broader\s+|ongoing\s+|public\s+|considerable\s+)?(?:debate|reflection|discussions?)\b`,
+        String.raw`,\s+raising\s+(?:\w+\s+)?questions\s+about\b`,
+        String.raw`\b(?:enduring|ongoing|continued|lasting)\s+relevance\b`,
+        String.raw`\b(?:the\s+)?distinction\s+(?:matters|is\s+important)\s+because\b`,
         String.raw`\bshap(?:e|es|ed|ing)\s+the\s+(?:future|course|trajectory)\s+of\b`,
       ],
       he: [
@@ -795,6 +875,10 @@ export const PATTERNS: Pattern[] = [
         he(String.raw`מעצב|מעצבת|מעצבים|מעצבות|עיצב|עיצבה`) + String.raw`\s+את\s+(?:עתיד|פני|דמותו\s+של|דמותה\s+של)`,
         he(String.raw`משקף|משקפת|משקפים|משקפות`) + String.raw`\s+(?:מגמה|תופעה|שינוי)\s+(?:רחבה|רחב|כללית|כללי|עמוקה|עמוק)`,
         he(String.raw`(?:ממשיך|ממשיכה|ממשיכים|ממשיכות)\s+(?:לרתק|לעורר\s+השראה|להדהד|לעצב)`),
+        he(String.raw`(?:חלק|כחלק)\s+מ(?:מגמה|תנועה|מהלך|שיח)\s+(?:רחב|רחבה|כללי|כללית)(?:\s+יותר)?|נקודת\s+מוקד|רגע\s+מכונן`),
+        he(String.raw`עורר|עוררה|עוררו|מעורר|מעוררת|מעוררים|הצית|הציתה`) +
+          String.raw`\s+(?:\p{L}+\s+)?(?:דיון|דיונים|שיח|רפלקציה|הרהורים)\s+(?:ציבורי|ציבוריים|רחב|רחבים|נרחב|נוקב|מעמיק)?\s*(?:על|בשאלת|בנוגע\s+ל)`,
+        he(String.raw`רלוונטיות(?:ו|ה|ם)?\s+(?:המתמשכת|הנמשכת|העכשווית)|חשיבות(?:ו|ה|ם)?\s+המתמשכת`),
       ],
     },
   },
@@ -827,18 +911,23 @@ export const PATTERNS: Pattern[] = [
     nameHe: '"למרות האתגרים... העתיד מבטיח"',
     nameEn: 'Challenges & future-outlook formula',
     descriptionHe:
-      'פסקה בנוסח "Despite these challenges, X continues to thrive" או "העתיד נראה מבטיח" היא תבנית סיום קבועה של מודלים שאינה מוסיפה מידע.',
+      'נוסחה קשיחה: "Despite its [מעלות], X faces several challenges..." ואחריה "Despite these challenges, X continues to thrive" או "העתיד נראה מבטיח", לעיתים תחת כותרת "אתגרים ותחזית לעתיד". הסימן הוא הנוסחה, לא עצם האזכור של אתגרים.',
     fixHe: 'מחקו את פסקת ה"אתגרים והעתיד" או החליפו בתוכניות ובנתונים קונקרטיים מהמקורות.',
     weight: 0.55,
     source: ['wikipedia', 'humanizer'],
     regex: {
       en: [
         String.raw`\bdespite\s+(?:these|its|their|the|such|some|numerous|several)\s+(?:\w+\s+)?(?:challenges|setbacks|obstacles|hurdles|limitations)\b`,
+        String.raw`\bdespite\s+(?:its|their|his|her)\s+[^.!?,]{1,60},\s+[^.!?,]{1,60}?\bfac(?:e|es|ed)\s+(?:\w+\s+)?challenges\b`,
+        String.raw`\bfac(?:e|es|ed|ing)\s+(?:several|numerous|many|various|new|a\s+number\s+of)\s+(?:\w+\s+)?challenges\b`,
         String.raw`\bcontinues?\s+to\s+(?:thrive|flourish|evolve|grow)\b`,
+        String.raw`\b(?:future\s+(?:outlook|prospects)|challenges\s+and\s+(?:legacy|future\s+prospects|opportunities))\b`,
         String.raw`\b(?:the\s+future\s+(?:looks|is|remains)\s+(?:bright|promising)|exciting\s+times\s+(?:lie\s+)?ahead|a\s+step\s+in\s+the\s+right\s+direction|remains?\s+to\s+be\s+seen)\b`,
       ],
       he: [
         he(String.raw`למרות|על\s+אף|חרף`) + String.raw`\s+(?:כל\s+)?(?:ה)?(?:אתגרים|קשיים|מכשולים|מגבלות)(?:\s+(?:הללו|האלה|אלו|אלה|הרבים))?${HE}`,
+        he(String.raw`ניצב|ניצבת|ניצבים|ניצבות|עומד|עומדת|עומדים|עומדות`) + String.raw`\s+(?:כיום\s+)?בפני\s+(?:(?:מספר|כמה|שורה\s+של)\s+אתגרים|אתגרים\s+(?:רבים|משמעותיים|לא\s+מעטים))${HE}`,
+        he(String.raw`אתגרים\s+ו(?:הזדמנויות|מורשת|תחזית|כיווני\s+עתיד)|תחזית\s+לעתיד|סיכויים\s+לעתיד`),
         he(String.raw`ממשיך|ממשיכה|ממשיכים|ממשיכות`) + String.raw`\s+(?:לשגשג|לפרוח|להתפתח\s+ולצמוח)${HE}`,
         he(String.raw`העתיד\s+(?:נראה|נראית)?\s*(?:מבטיח|ורוד|זוהר)|צעד\s+בכיוון\s+הנכון|ימים\s+(?:יגידו|יוכיחו)|זמנים\s+מרגשים`),
       ],
@@ -859,6 +948,8 @@ export const PATTERNS: Pattern[] = [
         String.raw`\b(?:experts?|scholars|researchers|analysts|observers|critics|historians|scientists)\s+(?:have\s+)?(?:say|said|believe|believed|argue|argued|agree|agreed|suggest|suggested|note|noted|cited|claim|claimed|contend)\b(?![^.!?]*\(\s*\p{L}[^)]*\d{4})`,
         String.raw`\b(?:studies|research|evidence|reports|surveys)\s+(?:has\s+|have\s+)?(?:shows?|shown|suggests?|indicates?|demonstrates?)\b(?![^.!?]*\(\s*\p{L}[^)]*\d{4})`,
         String.raw`\b(?:industry\s+reports|some\s+critics|many\s+(?:experts|scholars|observers)|it\s+is\s+(?:widely|generally|commonly)\s+(?:believed|accepted|acknowledged|recognized|recognised|agreed)|according\s+to\s+(?:experts|some|many))\b`,
+        String.raw`\b(?:observers\s+have\s+cited|described\s+in\s+(?:scholarship|the\s+literature)|modern\s+(?:researchers|scholars)\s+(?:treat|view|regard|see)|researchers\s+and\s+(?:conservationists|practitioners|policymakers)|(?:several|multiple|numerous|various)\s+(?:sources|publications|outlets)\s+(?:have\s+)?(?:noted|described|reported|highlighted|cited))\b`,
+        String.raw`\b(?:\w+\s+)?(?:industry|trade)\s+publications\s+such\s+as\b`,
       ],
       he: [
         he(String.raw`מומחים|חוקרים\s+רבים|רבים|מבקרים|פרשנים|משקיפים|אנשי\s+מקצוע`) +
@@ -866,6 +957,97 @@ export const PATTERNS: Pattern[] = [
         he(String.raw`מחקרים|מחקרים\s+רבים|מחקרים\s+עדכניים|דוחות|סקרים`) +
           String.raw`\s+(?:\p{L}+\s+)?(?:מראים|הראו|מראה|מצביעים|מצביעה|הצביעו|מלמדים|מעידים)${HE}(?![^.!?]*\(\s*\p{L}[^)]*\d{4})`,
         he(String.raw`יש\s+הטוענים|יש\s+הסבורים|מקובל\s+לחשוב|מקובל\s+לטעון|לדעת\s+מומחים|על\s+פי\s+מומחים|לפי\s+מומחים|רבים\s+סבורים`),
+        he(String.raw`(?:מקורות|פרסומים|כלי\s+תקשורת)\s+(?:רבים|שונים|מגוונים)\s+(?:ציינו|תיארו|דיווחו|הדגישו|מציינים|מתארים)|חוקרים\s+בני\s+זמננו\s+(?:רואים|מתייחסים)`),
+      ],
+    },
+  },
+  {
+    id: 'media-coverage-emphasis',
+    category: 'citation',
+    nameHe: 'הדגשת סיקור ובולטות',
+    nameEn: 'Canned emphasis on coverage / notability',
+    descriptionHe:
+      'במקום לסכם מה המקורות אומרים, מודלים מדגישים את עצם הסיקור ואת סוג המקורות ("featured in national media outlets", "independent coverage", "trade publications", "סוקר בהרחבה בכלי תקשורת ארציים") או "נוכחות פעילה ברשתות החברתיות". נפוץ במיוחד בכלים מ-2025 ואילך.',
+    fixHe: 'כתבו מה המקור אומר בפועל, עם הפניה, במקום לציין שהנושא סוקר.',
+    weight: 0.4,
+    source: ['wikipedia'],
+    regex: {
+      en: [
+        String.raw`\bindependent\s+(?:\w+\s+)?coverage\b`,
+        String.raw`\b(?:significant|substantial|sustained|widespread|extensive|repeated|national|regional|international)\s+(?:media|press|news)\s+coverage\b`,
+        String.raw`\b(?:local|regional|national|international|mainstream|prominent|major|other)\s+(?:\w+\s+)?media\s+(?:outlets|coverage|platforms)\b`,
+        String.raw`\b(?:music|business|tech|technology|industry|specialist)\s+outlets\b`,
+        String.raw`\b(?:featured|profiled|spotlighted)\s+in\b`,
+        String.raw`\b(?:maintains?|has)\s+an?\s+(?:active|strong|robust|growing|vibrant)\s+(?:social\s+media|digital|online)\s+presence\b`,
+        String.raw`\bwritten\s+by\s+a\s+leading\s+expert\b`,
+      ],
+      he: [
+        he(String.raw`(?:זכה|זכתה|זכו)\s+(?:ל)?סיקור\s+(?:תקשורתי\s+)?(?:נרחב|רחב|עצמאי|משמעותי|ארצי|בינלאומי)|סיקור\s+(?:תקשורתי\s+)?(?:עצמאי|נרחב\s+ועקבי)`),
+        he(String.raw`כלי\s+(?:ה)?תקשורת\s+(?:ה)?(?:מקומיים|אזוריים|ארציים|בינלאומיים|מובילים|מרכזיים|בולטים)`),
+        he(String.raw`(?:ה)?(?:פרסומים|כתבי\s+עת)\s+(?:ה)?מקצועיים\s+(?:בתחום\s+)?כגון`),
+        he(String.raw`נוכחות\s+(?:פעילה|חזקה|בולטת|דיגיטלית\s+(?:חזקה|פעילה|בולטת))\s+ב(?:רשתות\s+(?:ה)?חברתיות|מדיה\s+(?:ה)?חברתית)|נוכחות\s+דיגיטלית\s+(?:חזקה|פעילה|בולטת)`),
+      ],
+    },
+  },
+  {
+    id: 'identified-by-sources',
+    category: 'citation',
+    nameHe: '"המקור מזהה אותו כ..."',
+    nameEn: 'Undue emphasis on identification by sources',
+    descriptionHe:
+      'מודלים (בעיקר מ-2026) מדגישים איך מקור ראשוני או מאגר "מזהה" את הנושא ("His website identifies him as...", "records list her as...") במקום לכתוב את העובדה עצמה. הניסוח נוקשה ונוסחתי.',
+    fixHe: 'כתבו את העובדה ישירות ("X הוא קצין בדימוס") עם הפניה למקור.',
+    weight: 0.35,
+    source: ['wikipedia'],
+    regex: {
+      en: [
+        String.raw`\b(?:website|profile|biography|database|databases|records|listings?|filings?|materials|registry|directory)\s+(?:\w+\s+)?(?:identif(?:y|ies)|lists?|describes?)\s+(?:him|her|them|it|the\s+\w+)\s+as\b`,
+        String.raw`\b(?:was|were|is|are)\s+identified\s+by\s+[^.!?]{1,60}?\s+as\b`,
+        String.raw`\b(?:his|her|their)\s+professional\s+profile\s+lists\b`,
+      ],
+      he: [
+        heOpen(String.raw`(?:אתר|פרופיל|רשומות|מאגר|רישומי|מרשם)(?:\s+\p{L}+){0,2}\s+(?:מזהה|מזהים|מציג|מציגים|מתאר|מתארים)\s+(?:אותו|אותה|אותם|אותן)\s+כ`) + String.raw`\p{L}`,
+      ],
+    },
+  },
+  {
+    id: 'awards-recognition-heading',
+    category: 'structure',
+    nameHe: 'כותרת "פרסים והוקרה"',
+    nameEn: '"Awards and recognition" / "X and Y" section headings',
+    descriptionHe:
+      'כותרות בתבנית "X ו-Y", ובמיוחד "Awards and recognition", "Legacy and impact" או "Challenges and future directions", כמעט קבועות בטקסטים שנוצרו בבינה מלאכותית ומשקפות את ההתמקדות במורשת ובהכרה.',
+    fixHe: 'תנו לפרק כותרת שמתארת את תוכנו הספציפי, או שלבו את המידע בפרק אחר.',
+    weight: 0.35,
+    source: ['wikipedia'],
+    regex: {
+      en: [
+        String.raw`(?:^|\n)[ \t]*(?:#{1,6}[ \t]*|=+[ \t]*)?(?:awards\s+and\s+(?:recognition|honou?rs|achievements)|recognition\s+and\s+awards|legacy\s+and\s+(?:impact|influence)|impact\s+and\s+legacy|challenges\s+and\s+(?:legacy|future\s+(?:directions|prospects|outlook)))[ \t]*=*[ \t]*:?[ \t]*(?:\n|$)`,
+      ],
+      he: [
+        String.raw`(?:^|\n)[ \t]*(?:#{1,6}[ \t]*)?(?:פרסים\s+ו(?:הוקרה|הכרה|אותות|הישגים)|מורשת\s+ו(?:השפעה|השפעות)|השפעה\s+ומורשת|אתגרים\s+ו(?:מורשת|כיווני\s+עתיד|תחזית\s+לעתיד))[ \t]*:?[ \t]*(?:\n|$)`,
+      ],
+    },
+  },
+  {
+    id: 'source-usage-disclaimer',
+    category: 'citation',
+    nameHe: 'הסתייגות על אופן השימוש במקור',
+    nameEn: 'Corrective framing (should be treated as X rather than Y)',
+    descriptionHe:
+      'מאז אמצע 2026 מודלים מוסיפים הנחיות על איך "יש להתייחס" לטענה ("should be treated as tradition rather than as evidence"), קובעים ש"המידע אינו מבסס כשלעצמו" מסקנה, או מבהירים ש"אין לבלבל" עם נושא אחר. לפני יולי 2026 זה כמעט לא הופיע.',
+    fixHe: 'כתבו מה המקור אומר ומי אומר זאת; אם יש ספק - ייחסו את הטענה, בלי הוראות לקורא.',
+    weight: 0.45,
+    source: ['wikipedia'],
+    regex: {
+      en: [
+        String.raw`\bshould\s+be\s+(?:treated|presented|understood|read|regarded|viewed|seen|interpreted)\s+as\b[^.!?]{1,100}?\brather\s+than\b`,
+        String.raw`\b(?:does|do|did)\s+not\s+(?:by\s+itself\s+|on\s+its\s+own\s+|in\s+itself\s+|by\s+themselves\s+)?establish\s+(?:that|whether|a|an|any)\b`,
+        String.raw`\bshould\s+not\s+be\s+confused\s+with\b`,
+      ],
+      he: [
+        heOpen(String.raw`(?:יש|ראוי|מומלץ)\s+(?:להתייחס|לראות|להציג|לקרוא|להבין)\s+`) + String.raw`[^.!?]{1,100}?\s+ולא\s+(?:כ|בתור\s)`,
+        he(String.raw`(?:אין\s+בכך|אין\s+בו|אין\s+בה|אין\s+בהם)\s+(?:כשלעצמו\s+|כשלעצמה\s+)?כדי\s+(?:לבסס|להוכיח)|(?:אינו|אינה|אינם|אינן)\s+(?:מבסס|מבססת|מבססים|מבססות)\s+(?:כשלעצמו|כשלעצמה|כשלעצמם|כשלעצמן|בפני\s+עצמו|בפני\s+עצמה)`),
       ],
     },
   },
@@ -896,7 +1078,7 @@ export const PATTERNS: Pattern[] = [
     nameHe: "שאריות צ'אטבוט",
     nameEn: 'Chatbot residue (I hope this helps)',
     descriptionHe:
-      'פתיחות וסיומות של שיחה ("Certainly!", "I hope this helps", "Let me know if...", "מקווה שזה עוזר", "אשמח לעזור") הן הסימן הוודאי ביותר שהטקסט הועתק מצ\'אטבוט.',
+      'פתיחות, סיומות והוראות של שיחה ("Certainly!", "I hope this helps", "Would you like...", "Here are several paraphrases", "verify before submitting", "מקווה שזה עוזר", "אשמח לעזור", "בדקו לפני ההגשה") הן הסימן הוודאי ביותר שהטקסט הועתק מצ\'אטבוט.',
     fixHe: 'מחקו את העטיפה השיחתית והשאירו את התוכן בלבד.',
     weight: 0.95,
     source: ['wikipedia', 'humanizer'],
@@ -904,10 +1086,14 @@ export const PATTERNS: Pattern[] = [
       en: [
         String.raw`\b(?:i\s+hope\s+(?:this|that|it)\s+helps|hope\s+this\s+helps|let\s+me\s+know\s+if|feel\s+free\s+to|happy\s+to\s+help|would\s+you\s+like\s+(?:me\s+to|a|an|more)|want\s+me\s+to|should\s+i\s+continue|i${AP}d\s+be\s+happy\s+to|i\s+can\s+also\s+help)\b`,
         String.raw`(?:^|[.!?]\s+)(?:certainly|of\s+course|absolutely|sure|great)!`,
-        String.raw`(?:^|[.!?]\s+)here\s+(?:is|are)\s+(?:a|an|the|some)\s+(?:\w+\s+)?(?:overview|summary|breakdown|list|draft|version|rewrite|revised|paragraph|essay|outline)\b`,
+        String.raw`(?:^|[.!?:]\s+)here(?:\s+is|\s+are|${AP}s)\s+(?:a|an|the|some|several)\s+(?:[\w,-]+\s+){0,3}(?:overview|summary|breakdown|list|draft|version|rewrite|revised|paragraph|essay|outline|template|paraphrases?)\b`,
+        String.raw`\b(?:is\s+there\s+anything\s+else|(?:a\s+)?more\s+detailed\s+breakdown|a\s+wikipedia-style\s+(?:article|paraphrase|summary)|i\s+(?:hope|trust)\s+this\s+(?:message|email|note)\s+finds\s+you\s+well|apologi[sz]e\s+for\s+any\s+inconvenience|if\s+there\s+are\s+(?:any\s+)?specific\s+(?:issues|concerns|areas)|final\s+important\s+tip|delete\s+this\s+section\s+before)\b`,
+        String.raw`\b(?:check|verify|confirm|double-check)\b[^.!?]{0,60}\bbefore\s+(?:publishing|publication|submitting|submission)\b`,
       ],
       he: [
         he(String.raw`(?:אני\s+)?מקווה\s+ש(?:זה|הדבר|התשובה|המידע)\s+(?:עוזר|עזר|יעזור|מועיל|הועיל|עונה)|אשמח\s+לעזור|אשמח\s+להרחיב|אם\s+(?:תרצה|תרצי|תרצו)|(?:תרגיש|תרגישי|הרגישו|הרגש)\s+חופשי|האם\s+להמשיך`),
+        he(String.raw`האם\s+יש\s+(?:עוד\s+(?:משהו|דבר)|משהו\s+נוסף)|פירוט\s+(?:מפורט|מעמיק)\s+יותר|(?:אני\s+)?(?:מתנצל|מתנצלת|מתנצלים)\s+על\s+(?:כל\s+)?אי[\s-]?ה?נוחות|מחקו\s+(?:את\s+)?(?:הסעיף|החלק|ההערה)\s+(?:הזה|הזו|הזאת)\s+לפני`),
+        he(String.raw`בדקו|ודאו|וודאו|אמתו|בדוק|ודא|וודא|אמת`) + String.raw`[^.!?]{0,60}?${HB}לפני\s+(?:ה)?(?:פרסום|הגשה|הגשת|שליחה|שליחת)${HE}`,
         heOpen(String.raw`אל\s+תהסס(?:י|ו)?\s+ל|האם\s+(?:תרצה|תרצי|תרצו)\s+ש|(?:רוצה|תרצה|תרצי)\s+ש(?:א|נ)`),
         String.raw`(?:^|[.!?]\s+)(?:בהחלט|כמובן|בשמחה|בוודאי|בטח)!`,
         String.raw`(?:^|[.!?]\s+)הנה\s+(?:\p{L}+\s+)?(?:סיכום|סקירה|רשימה|טיוטה|גרסה|פסקה|מאמר|תקציר|פירוט|ניסוח)${HE}`,
@@ -927,12 +1113,15 @@ export const PATTERNS: Pattern[] = [
     regex: {
       en: [
         String.raw`\b(?:as\s+of\s+my\s+(?:last\s+)?(?:knowledge|training)|up\s+to\s+my\s+(?:last\s+)?(?:training|knowledge)|my\s+knowledge\s+cutoff|as\s+of\s+my\s+last\s+update|i\s+(?:do\s+not|don${AP}t)\s+have\s+(?:access\s+to\s+)?real-time)\b`,
-        String.raw`\b(?:while\s+specific\s+details\s+(?:are|remain)\s+(?:limited|scarce)|based\s+on\s+(?:the\s+)?available\s+information|(?:is|are|was|were)\s+not\s+(?:widely|extensively|publicly|readily)\s+(?:documented|available|disclosed)|in\s+the\s+(?:provided|available)\s+sources|maintains\s+a\s+low\s+profile)\b`,
+        String.raw`\b(?:while\s+specific\s+(?:details|information)\s+(?:about\s+[^.!?,]{1,60}\s+)?(?:are|is|remain|remains)\s+(?:limited|scarce)|based\s+on\s+(?:the\s+)?available\s+information|(?:is|are|was|were)\s+not\s+(?:widely|extensively|publicly|readily|fully)\s+(?:documented|available|disclosed|transcribed)|in\s+the\s+(?:provided|available)\s+(?:sources|search\s+results|documents)|maintains\s+a\s+low\s+profile|keeps?\s+(?:his|her|their)\s+personal\s+(?:details|life|information)\s+private)\b`,
+        String.raw`\b(?:isn${AP}t|aren${AP}t|wasn${AP}t|weren${AP}t)\s+(?:widely|extensively|fully|publicly|readily)\s+(?:documented|available|disclosed|transcribed)\b`,
+        String.raw`\b(?:my\s+analysis\s+is\s+based\s+on|i${AP}ve\s+inferred|not\s+fully\s+documented\s+in\s+public\s+sources)\b`,
       ],
       he: [
         heOpen(String.raw`אין\s+לי\s+גישה\s+ל`),
         he(String.raw`נכון\s+ל(?:עדכון|מועד\s+עדכון|תאריך\s+עדכון)\s+(?:ה)?(?:ידע|המידע|האימון)|עד\s+למועד\s+עדכון\s+הידע|אין\s+ברשותי\s+מידע\s+עדכני`),
         he(String.raw`על\s+סמך\s+(?:ה)?מידע\s+(?:ה)?(?:זמין|הקיים\s+בידי)|(?:אינו|אינה|אינם|אינן|לא)\s+(?:מתועד|מתועדת|מתועדים|מתועדות|זמין|זמינה|זמינים)\s+(?:בהרחבה|לציבור|במקורות\s+הזמינים)|במקורות\s+(?:הזמינים|שסופקו)|אין\s+מידע\s+זמין`),
+        he(String.raw`(?:שומר|שומרת|שומרים)\s+על\s+פרופיל\s+נמוך|(?:שומר|שומרת|שומרים)\s+את\s+(?:פרטיו|פרטיה|פרטיהם)\s+האישיים\s+(?:ב)?(?:פרטיות|לעצמו|לעצמה)|בתוצאות\s+החיפוש\s+(?:שסופקו|הזמינות)|(?:הניתוח|הסקירה)\s+שלי\s+מבוסס(?:ת)?\s+על`),
       ],
     },
   },
@@ -951,8 +1140,14 @@ export const PATTERNS: Pattern[] = [
         String.raw`\bas\s+(?:an?\s+)?(?:ai|artificial\s+intelligence|large\s+language|language)\s+(?:language\s+)?model\b`,
         String.raw`\bas\s+an\s+ai\b`,
         String.raw`\bi${AP}m\s+(?:unable|not\s+able)\s+to\s+(?:browse|access|provide\s+real-time)\b`,
+        String.raw`\bi${AP}m\s+sorry,?\s+but\s+i\s+(?:can${AP}t|cannot|am\s+unable\s+to)\b`,
+        String.raw`\bi\s+(?:cannot|can${AP}t)\s+(?:offer|provide|give)\s+(?:medical|legal|financial)\s+advice\b`,
+        String.raw`\bi\s+(?:cannot|can${AP}t)\s+directly\s+(?:add|edit|access|browse)\b`,
       ],
-      he: [he(String.raw`כמודל\s+(?:שפה|בינה\s+מלאכותית)|כבינה\s+מלאכותית|בתור\s+מודל\s+שפה|אני\s+מודל\s+שפה|כעוזר\s+וירטואלי`)],
+      he: [
+        he(String.raw`כמודל\s+(?:שפה|בינה\s+מלאכותית)|כבינה\s+מלאכותית|בתור\s+מודל\s+שפה|אני\s+מודל\s+שפה|כעוזר\s+וירטואלי`),
+        he(String.raw`(?:אני\s+)?(?:מצטער|מצטערת)\s*,?\s+(?:אך|אבל)\s+(?:אינני|איני|אני\s+לא)\s+יכול(?:ה)?|(?:אינני|איני|אני\s+לא)\s+(?:יכול|יכולה)\s+(?:לתת|להעניק|לספק)\s+ייעוץ\s+(?:רפואי|משפטי|פיננסי)`),
+      ],
     },
   },
 
@@ -1029,7 +1224,7 @@ export const PATTERNS: Pattern[] = [
     source: ['stop-slop', 'humanizer', 'wikipedia'],
     regex: {
       en: [
-        String.raw`\b(?:in\s+this\s+(?:section|article|essay|chapter|paper),?\s+(?:we|i)\s+(?:will|shall|(?:${AP}ll))\s+(?:explore|delve|dive|examine|unpack|take\s+a\s+look)|as\s+we${AP}ll\s+see|the\s+rest\s+of\s+this\s+(?:essay|article|post)|i\s+want\s+to\s+explore|but\s+that${AP}s\s+(?:another|a\s+topic\s+for\s+another)\s+(?:post|story|day))\b`,
+        String.raw`\b(?:in\s+this\s+(?:section|article|essay|chapter|paper|report),?\s+(?:we|i)\s+(?:will|shall|(?:${AP}ll))\s+(?:explore|delve|dive|examine|unpack|discuss|take\s+a\s+look)|as\s+we${AP}ll\s+see|the\s+rest\s+of\s+this\s+(?:essay|article|post)|i\s+want\s+to\s+explore|but\s+that${AP}s\s+(?:another|a\s+topic\s+for\s+another)\s+(?:post|story|day))\b`,
         String.raw`(?:^|[.!?]\s+)(?:hint|plot\s+twist|spoiler):`,
       ],
       he: [
@@ -1086,7 +1281,7 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'הימנעות מ"הוא/יש" ("מהווה")',
     nameEn: 'Copula avoidance (serves as, boasts)',
     descriptionHe:
-      'מודלים מחליפים את "is/has" בביטויים מנופחים כמו "serves as", "stands as", "boasts", ובעברית "מהווה", "משמש כ", "מתפקד כ", "עומד כ". "מהווה" נפוץ גם אצל כותבים אנושיים, ולכן המשקל בינוני.',
+      'מודלים מחליפים את "is/has" בביטויים מנופחים כמו "serves as", "stands as", "boasts", "holds the distinction of", ובעברית "מהווה", "משמש כ", "מתפקד כ", "עומד כ", "מחזיק בתואר". מחקר מצא ירידה של יותר מ-10% בשימוש ב-is/are בכתיבה אקדמית מ-2023. "מהווה" נפוץ גם אצל כותבים אנושיים, ולכן המשקל בינוני.',
     fixHe: 'החליפו ב"הוא/היא/הם" או ב"יש", למשל "X הוא מרכז המחקר" במקום "X מהווה את מרכז המחקר".',
     weight: 0.25,
     source: ['wikipedia', 'humanizer'],
@@ -1095,11 +1290,14 @@ export const PATTERNS: Pattern[] = [
         String.raw`\b(?:serv(?:es|ed|ing)|stand(?:s|ing)|stood|function(?:s|ed|ing)?|act(?:s|ed|ing)?|operat(?:es|ed|ing))\s+as\s+(?:a|an|the)\b`,
         String.raw`\bboast(?:s|ed|ing)?\s+(?:a|an|the|over|more|some|numerous|several)\b`,
         String.raw`\bserves?\s+as\s+a\s+(?:reminder|testament|catalyst|cornerstone|bridge)\b`,
+        String.raw`\bholds?\s+the\s+distinction\s+of\b`,
+        String.raw`\bventured\s+into\s+\w+(?:\s+\w+)?\s+as\s+an?\b`,
       ],
       he: [
         he(String.raw`מהווה|מהווים|מהוות|מהווֹת|היווה|היוותה|היוו|להוות`),
         he(String.raw`משמש|משמשת|משמשים|משמשות|שימש|שימשה|שימשו|מתפקד|מתפקדת|מתפקדים|מתפקדות|עומד|עומדת|עומדים|עומדות`) +
           String.raw`\s+כ(?:מרכז|גשר|זרז|אבן|תזכורת|עדות|מקור|בסיס|מודל|דוגמה|נדבך|עוגן)`,
+        he(String.raw`מחזיק|מחזיקה|מחזיקים|מחזיקות|החזיק|החזיקה`) + String.raw`\s+בתואר\s+(?:ה)?(?:ראשון|ראשונה|הוותיק|הוותיקה|היחיד|היחידה)`,
       ],
     },
   },
@@ -1115,7 +1313,7 @@ export const PATTERNS: Pattern[] = [
     source: ['wikipedia', 'humanizer'],
     regex: {
       en: [
-        String.raw`[,;]\s+(?:thereby\s+|thus\s+)?(?:highlighting|underscoring|emphasizing|emphasising|reflecting|symbolizing|symbolising|showcasing|illustrating|demonstrating|signaling|signalling|contributing\s+to|fostering|ensuring|cultivating|encompassing|solidifying|reinforcing|cementing|paving\s+the\s+way|marking|underlining)\b`,
+        String.raw`[,;—–]\s*(?:thereby\s+|thus\s+|further\s+)?(?:highlighting|underscoring|emphasizing|emphasising|reflecting|symbolizing|symbolising|showcasing|illustrating|demonstrating|signaling|signalling|contributing\s+to|fostering|ensuring|cultivating|encompassing|enhancing|embodying|solidifying|reinforcing|cementing|confirming|paving\s+the\s+way|marking|underlining)\b`,
       ],
       he: [
         String.raw`[,;]\s*(?:ובכך\s+|ובזאת\s+|וכך\s+|דבר\s+[הש]?|מה\s+ש)(?:מדגיש|מדגישה|מדגישים|ממחיש|ממחישה|ממחישים|משקף|משקפת|משקפים|מעיד|מעידה|מעידים|תורם|תורמת|תורמים|מבטיח|מבטיחה|מחזק|מחזקת|מחזקים|מסמל|מסמלת|מבליט|מבליטה|מטפח|מטפחת|סולל|סוללת|מבסס|מבססת|מקבע|מקבעת)${HE}`,
@@ -1128,14 +1326,65 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'קשר עמום',
     nameEn: 'Vague connection (associated with)',
     descriptionHe:
-      'ניסוחים כמו "associated with", "in connection with", "בזיקה ל", "בהקשר של" מציינים שיש קשר בלי לומר מהו. חלש לבדו.',
+      'במקום לומר מה היחס בין שני דברים ("ניהל את", "לימד ב"), מודלים כותבים שהם "associated with", "connected to", "in connection with" ("בזיקה ל", "נקשר בשמו של"), לעיתים שוב ושוב. לפי ויקיפדיה זה מהסימנים הנפוצים ביותר ב-2026. "associated with" נפוץ מאוד גם בכתיבה מדעית, ולכן רק צירופים אופייניים נתפסים.',
     fixHe: 'ציינו את היחס המדויק (ייסד, ניהל, גרם, נבע מ) אם המקור מאפשר.',
-    weight: 0.1,
-    source: ['humanizer'],
+    weight: 0.15,
+    source: ['wikipedia', 'humanizer'],
     regex: {
-      en: [String.raw`\b(?:in\s+(?:association|connection)\s+with|(?:is|was|are|were)\s+associated\s+with\s+the\s+(?:leadership|work|efforts)\s+of)\b`],
+      en: [
+        String.raw`\b(?:in\s+(?:association|connection)\s+(?:with|to)|(?:is|was|are|were)\s+associated\s+with\s+the\s+(?:leadership|work|efforts)\s+of)\b`,
+        String.raw`\b(?:principally|particularly|widely|closely|primarily|chiefly)\s+(?:associated|connected)\s+with\b`,
+        String.raw`\b(?:became|becomes|become)\s+(?:associated|connected)\s+with\b`,
+        String.raw`\b(?:was|were|has\s+been|have\s+been)\s+connected\s+(?:with|to)\s+(?:the\s+)?(?:\w+\s+)?(?:education|leadership|work|activities|initiatives|recognition|efforts)\b`,
+      ],
       he: [heOpen(String.raw`בזיקה\s+ל`),
-        he(String.raw`נקשר(?:ה|ו)?\s+בשמו\s+של`)],
+        he(String.raw`נקשר(?:ה|ו)?\s+בשמו\s+של|נקשר(?:ה|ו)?\s+בשמה\s+של`),
+        he(String.raw`(?:מזוהה|מזוהים|מזוהות|נעשה\s+מזוהה|נעשתה\s+מזוהה)\s+(?:בעיקר|במיוחד|בעיקרו)\s+עם`)],
+    },
+  },
+
+  {
+    id: 'revision-assurance',
+    category: 'filler',
+    nameHe: 'הערות עריכה "שיפרתי בהירות וזרימה"',
+    nameEn: 'Canned revision notes (improved clarity and flow, while preserving...)',
+    descriptionHe:
+      'מודלים שמתבקשים לערוך מוסיפים סיכום עריכה נוסחתי: "שופרו הבהירות והזרימה", "טון ניטרלי/אקדמי יותר", "תוך שמירה על המשמעות המקורית", "addressed reviewer feedback". ויקיפדיה מתעדת זאת בתקצירי עריכה; בעבודה מוגשת זו שארית של פלט.',
+    fixHe: 'מחקו את הערת העריכה; אם צריך לתעד שינויים, ציינו מה שונה בפועל ולמה.',
+    weight: 0.55,
+    source: ['wikipedia'],
+    regex: {
+      en: [
+        String.raw`\bwhile\s+(?:preserving|retaining|maintaining|keeping)\s+(?:the\s+)?(?:original|core|existing|overall|key)\s+(?:meaning|structure|intent|content|details|tone|voice|message|emphasis)\b`,
+        String.raw`\b(?:improved?|improving|enhanced?|enhancing|refined?|refining)\s+(?:the\s+)?(?:overall\s+)?(?:clarity|flow|readability|coherence|concision)(?:,?\s+(?:and\s+)?(?:flow|readability|clarity|coherence|tone|concision))+\b`,
+        String.raw`\b(?:for\s+(?:a\s+)?more|to\s+(?:be\s+)?more)\s+(?:neutral|encyclopedic|academic|formal|balanced)\s+(?:and\s+\w+\s+)?tone\b`,
+        String.raw`\b(?:reduced|removed)\s+redundancy\b`,
+        String.raw`\bensur(?:e|ed|ing)\s+(?:full\s+)?(?:compliance|adherence)\s+with\s+(?:the\s+)?(?:\w+\s+)?(?:guidelines|style\s+guide|manual\s+of\s+style)\b`,
+      ],
+      he: [
+        he(String.raw`תוך\s+שמירה\s+על\s+(?:ה)?(?:משמעות|כוונה|מבנה|תוכן|סגנון)\s+(?:ה)?(?:מקורי|מקורית|קיים|קיימת)`),
+        he(String.raw`(?:שיפור|שופרו|שיפרתי|לשיפור)\s+(?:ה)?(?:בהירות|קריאות|זרימה|רהיטות)(?:\s*,?\s*ו?(?:ה)?(?:בהירות|קריאות|זרימה|רהיטות|טון))+`),
+        he(String.raw`(?:טון|נימה|סגנון)\s+(?:ניטרלי|ניטרלית|אקדמי|אקדמית|מאוזן|מאוזנת|רשמי|רשמית)\s+יותר`),
+        he(String.raw`צמצום\s+(?:ה)?חזרות|הוסרו\s+(?:ה)?חזרות`),
+      ],
+    },
+  },
+  {
+    id: 'stiff-synonyms',
+    category: 'filler',
+    nameHe: 'מילים נוקשות במקום פשוטות',
+    nameEn: 'Stiff synonyms (utilized, authored, relocated)',
+    descriptionHe:
+      'ויקיפדיה מציינת שכותבים אנושיים משתמשים יותר במילים הפשוטות (used, wrote, moved, died), ומודלים מעדיפים מילים נוקשות או מכובסות (utilized, authored, relocated, passed away; בעברית "עשה שימוש ב", "הלך לעולמו"). סימן חלש מאוד לבדו.',
+    fixHe: 'החליפו במילה הפשוטה: "השתמש", "כתב", "עבר", "מת/נפטר".',
+    weight: 0.08,
+    source: ['wikipedia'],
+    regex: {
+      en: [String.raw`\b(?:utili[sz](?:e|es|ed|ing|ation)|authored|relocated|passed\s+away)\b`],
+      he: [
+        heOpen(String.raw`(?:עושה|עושים|עושות|עשה|עשתה|עשו)\s+שימוש\s+ב`) + String.raw`\p{L}`,
+        he(String.raw`הלך\s+לעולמו|הלכה\s+לעולמה|הלכו\s+לעולמם`),
+      ],
     },
   },
 
@@ -1148,7 +1397,7 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'שימוש יתר במקף ארוך',
     nameEn: 'Em-dash overuse',
     descriptionHe:
-      'מקף ארוך (—) כמחבר אוניברסלי בין משפטים הוא מהסימנים הוויזואליים הבולטים של מודלי שפה; מקף בודד חלש, צפיפות גבוהה חזקה.',
+      'מקף ארוך (—), לרוב מוקף ברווחים, כמחבר אוניברסלי במקום פסיק, סוגריים או נקודתיים הוא מהסימנים הוויזואליים הבולטים של מודלי שפה; מקף בודד חלש, צפיפות גבוהה חזקה. מאז סוף 2026 מודלים חדשים נמנעים ממנו כליל, כך שהיעדרו אינו מוכיח דבר.',
     fixHe: 'החליפו בנקודה, פסיק, נקודתיים או סוגריים בהתאם ליחס בין החלקים.',
     weight: 0.2,
     source: ['wikipedia', 'stop-slop', 'humanizer'],
@@ -1163,12 +1412,12 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'מירכאות מעוגלות',
     nameEn: 'Curly quotation marks',
     descriptionHe:
-      'מירכאות מעוגלות (“ ”) במקום ישרות או גרשיים עבריים (״) מופיעות בטקסט שהועתק מצ\'אטבוט; Word מעגל מירכאות אוטומטית, לכן הסימן חלש מאוד לבדו.',
+      'מירכאות ואפוסטרופים מעוגלים (“ ” ’) במקום ישרים או גרשיים עבריים (״) מופיעים בטקסט שהועתק מצ\'אטבוט; Word מעגל מירכאות אוטומטית, לכן הסימן חלש מאוד לבדו.',
     fixHe: 'השתמשו בסוג מירכאות אחיד בכל העבודה (בעברית: " או ״).',
     weight: 0.05,
     source: ['wikipedia', 'humanizer'],
     regex: {
-      en: [String.raw`[“”]`],
+      en: [String.raw`[“”]`, String.raw`(?<=\p{L})’(?=\p{L})`],
       he: [String.raw`[“”„]`],
     },
   },
@@ -1234,13 +1483,23 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'שאריות Markdown',
     nameEn: 'Markdown artifacts in prose',
     descriptionHe:
-      'סימני Markdown שנותרו בטקסט (## כותרת, ```, קווי הפרדה ---) מעידים שהטקסט הודבק ישירות מממשק צ\'אט.',
+      'סימני Markdown שנותרו בטקסט (## כותרת, ```, קווי הפרדה ---, קישורים בתבנית [טקסט](כתובת)) מעידים שהטקסט הודבק ישירות מממשק צ\'אט. לפי ויקיפדיה זה מהסימנים הנפוצים ביותר כיום.',
     fixHe: 'הסירו את הסימנים והשתמשו בעיצוב של מעבד התמלילים.',
     weight: 0.55,
     source: ['wikipedia', 'humanizer'],
     regex: {
-      en: [String.raw`(?:^|\n)\s*#{1,6}\s+\S`, String.raw`(?:^|\n)\s*(?:---+|\*\*\*+|___+)\s*(?:\n|$)`, '`{3}'],
-      he: [String.raw`(?:^|\n)\s*#{1,6}\s+\S`, String.raw`(?:^|\n)\s*(?:---+|\*\*\*+|___+)\s*(?:\n|$)`, '`{3}'],
+      en: [
+        String.raw`(?:^|\n)\s*#{1,6}\s+\S`,
+        String.raw`(?:^|\n)\s*(?:---+|\*\*\*+|___+)\s*(?:\n|$)`,
+        '`{3}',
+        String.raw`\[[^\]\n]{1,80}\]\((?:https?://|www\.)[^)\s]+\)`,
+      ],
+      he: [
+        String.raw`(?:^|\n)\s*#{1,6}\s+\S`,
+        String.raw`(?:^|\n)\s*(?:---+|\*\*\*+|___+)\s*(?:\n|$)`,
+        '`{3}',
+        String.raw`\[[^\]\n]{1,80}\]\((?:https?://|www\.)[^)\s]+\)`,
+      ],
     },
   },
   {
@@ -1249,20 +1508,24 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'טקסט ממלא-מקום',
     nameEn: 'Unfilled placeholders',
     descriptionHe:
-      'תבניות שלא מולאו ("[Your Name]", "[Insert source]", "2025-XX-XX", "[שם המחבר]", "[הוסף מקור]") הן הוכחה כמעט ודאית להעתקה מפלט של מודל.',
+      'תבניות שלא מולאו ("[Your Name]", "[Article Title 1]", "[Year]", "(Add your URL here)", "INSERT_SOURCE_URL_30", "2025-XX-XX", "example.com/source1", "[שם המחבר]", "[הוסף מקור]") הן הוכחה כמעט ודאית להעתקה מפלט של מודל.',
     fixHe: 'מלאו את הפרט החסר מתוך המקורות שלכם או מחקו את המשפט.',
     weight: 1,
     source: ['wikipedia'],
     regex: {
       en: [
-        String.raw`\[(?:your|insert|add|author|name|date|source|citation|reference|company|placeholder|link|url)[^\]\n]{0,40}\]`,
-        String.raw`\b(?:INSERT|PLACEHOLDER)_[A-Z_]+\b`,
-        String.raw`\b(?:19|20)\d{2}-XX-XX\b`,
+        String.raw`\[(?:your|insert|add|describe|list|author|name|date|year|source|citation|reference|company|placeholder|link|url|brief|specific|article\s+title|founder|title)\b[^\]\n]{0,80}\]`,
+        String.raw`\[[^\]\n]{0,40}\b(?:name|names|title|date|year|url|address|here)\s*\d*\]`,
+        String.raw`\((?:add|insert|paste)\s+[^)\n]{1,40}\s+here\)`,
+        String.raw`\b(?:INSERT|PASTE|PLACEHOLDER)_[A-Z0-9_]+\b|\bSOURCE_PUBLISHER\b`,
+        String.raw`\b(?:19|20)\d{2}-(?:\d{2}|XX)-XX\b|\{\{CURRENTYEAR\}\}-XX-XX`,
         String.raw`\{\{\s*(?:placeholder|name|date|source)[^}]*\}\}`,
+        String.raw`\bexample\.com/(?:source|article|news|page|link)\d*\b`,
       ],
       he: [
-        String.raw`\[(?:שם|הכנס|הכניסו|הוסף|הוסיפו|תאריך|מקור|ציטוט|הפניה|קישור|שם\s+המחבר|שנה|מספר\s+עמוד)[^\]\n]{0,40}\]`,
-        String.raw`\b(?:19|20)\d{2}-XX-XX\b`,
+        String.raw`\[(?:שם|הכנס|הכניסו|הוסף|הוסיפו|תאר|תארו|תאריך|מקור|ציטוט|הפניה|קישור|שם\s+המחבר|שנה|מספר\s+עמוד|כותרת)[^\]\n]{0,80}\]`,
+        String.raw`\((?:הוסף|הוסיפו|הכנס|הכניסו|הדבק|הדביקו)\s+[^)\n]{1,40}\s+כאן\)`,
+        String.raw`\b(?:19|20)\d{2}-(?:\d{2}|XX)-XX\b`,
       ],
     },
   },
@@ -1276,18 +1539,20 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'שאריות ציטוט של ChatGPT',
     nameEn: 'ChatGPT citation artifacts (oaicite, utm_source)',
     descriptionHe:
-      'מחרוזות כמו "contentReference[oaicite:0]", "turn0search0", "citeturn" או קישורים עם "utm_source=chatgpt.com" נשארות כשמעתיקים תשובה של ChatGPT - הוכחה ודאית.',
+      'מחרוזות כמו "contentReference[oaicite:0]", "turn0search0", "citeturn", קישורים עם "utm_source=chatgpt.com" / "utm_source=copilot.com" / "referrer=grok.com", או סימן החזרה ↩ ליד הערות שוליים, נשארים כשמעתיקים תשובה של צ\'אטבוט - הוכחה כמעט ודאית לשימוש בכלי (גם אם לא בהכרח לכתיבת הטקסט עצמו).',
     fixHe: 'מחקו את המחרוזת ובדקו ידנית את המקור המקורי; צטטו אותו בפורמט האקדמי הנדרש.',
     weight: 1,
     source: ['wikipedia'],
     regex: {
       en: [
-        String.raw`oaicite|contentReference\s*\[|turn\d+(?:search|news|view|file)\d+|citeturn|utm_source=(?:chatgpt\.com|openai|copilot\.com|perplexity)`,
+        String.raw`oaicite|contentReference\s*\[|turn\d+(?:search|news|view|file)\d+|citeturn|utm_source=(?:chatgpt\.com|openai|copilot\.com|perplexity)|referrer=grok\.com`,
         String.raw`【\d+(?:[:†][^】]{0,40})?】`,
+        String.raw`↩`,
       ],
       he: [
-        String.raw`oaicite|contentReference\s*\[|turn\d+(?:search|news|view|file)\d+|citeturn|utm_source=(?:chatgpt\.com|openai|copilot\.com|perplexity)`,
+        String.raw`oaicite|contentReference\s*\[|turn\d+(?:search|news|view|file)\d+|citeturn|utm_source=(?:chatgpt\.com|openai|copilot\.com|perplexity)|referrer=grok\.com`,
         String.raw`【\d+(?:[:†][^】]{0,40})?】`,
+        String.raw`↩`,
       ],
     },
   },
@@ -1297,7 +1562,7 @@ export const PATTERNS: Pattern[] = [
     nameHe: 'הפניות מפוברקות',
     nameEn: 'Hallucinated / unverifiable references',
     descriptionHe:
-      'מודלים ממציאים מאמרים, מספרי DOI ו-ISBN שנראים אמינים אך אינם קיימים, או מצטטים מקור אמיתי שאינו תומך בטענה. מזוהה רק באימות מול מאגרים (Crossref, Google Scholar).',
+      'מודלים ממציאים מאמרים, קישורים שבורים (שגם בארכיון האינטרנט אינם), מספרי ISBN עם ספרת ביקורת שגויה ו-DOI שמוביל למאמר לא קשור; ספרים מצוטטים בלי מספרי עמודים או עם עמודים שאינם תומכים בטענה. מזוהה רק באימות מול מאגרים (Crossref, Google Scholar).',
     fixHe: 'אמתו כל הפניה במאגר; מחקו או החליפו כל מקור שלא נמצא או שאינו אומר את מה שמיוחס לו.',
     weight: 0.7,
     source: ['wikipedia'],
