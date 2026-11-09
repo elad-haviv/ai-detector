@@ -8,7 +8,7 @@
 
 | מקור | משקל | מה הוא בודק |
 |---|---|---|
-| מודל שפה (OpenRouter / Google AI Studio / OpenAI / Anthropic) | 60% | קורא את המשפט בהקשר, מחזיר הסתברות, דפוסים, הסבר והצעת ניסוח (`src/lib/prompts.ts`) |
+| מודל שפה (OpenRouter / OpenAI / Anthropic / Google AI Studio / xAI) | 60% | קורא את המשפט בהקשר, מחזיר הסתברות, דפוסים, הסבר והצעת ניסוח (`src/lib/prompts.ts`) |
 | מודל החלטה (Jev של TypeSafe, או מודל אחר מ-OpenRouter Decisions) | 25% | הסתברות מכוילת לשאלת כן/לא על כל משפט |
 | כללים מקומיים | 15% | 62 דפוסים מ-Wikipedia "Signs of AI writing", stop-slop ו-humanizer, כולל מקבילות בעברית (`src/lib/patterns/catalog.ts`) |
 
@@ -23,7 +23,43 @@ npm install
 npm run dev
 ```
 
-פותחים את http://localhost:3000 ובוחרים ספק ומפתח בעמוד ההגדרות. המפתחות נשמרים ב-localStorage בלבד. אפשר גם להגדיר מפתחות בצד השרת (`.env.example`).
+פותחים את http://localhost:3000 ובוחרים ספק ומפתח בעמוד ההגדרות (הגדרות ← גישה).
+
+## ספקים ומפתחות
+
+שלוש דרכים להשתמש בקולמוס:
+
+1. **מפתח API משלכם (חינם, BYOK).** ספקים נתמכים:
+
+   | ספק | מודל ברירת מחדל | איפה מקבלים מפתח |
+   |---|---|---|
+   | OpenRouter (מפתח אחד לכל המודלים, וגם מודלי החלטה) | `anthropic/claude-sonnet-5.5` | openrouter.ai/keys |
+   | OpenAI | `gpt-6.1-terra` | platform.openai.com/api-keys |
+   | Anthropic | `claude-sonnet-5-5` | console.anthropic.com/settings/keys |
+   | Google AI Studio | `gemini-3.8-flash` | aistudio.google.com/apikey |
+   | xAI (Grok) | `grok-4.3` | console.x.ai |
+
+   xAI עובד דרך ה-API התואם ל-OpenAI בכתובת `https://api.x.ai/v1/chat/completions`.
+
+2. **מנוי Pro (בהמשך, M3).** משתמש מנוי לא צריך מפתח: השרת משתמש במפתחות של המפעיל (משתני סביבה).
+3. **כללים מקומיים בלבד.** בלי שום מפתח, הניתוח רץ בדפדפן על הכללים המקומיים.
+
+### איפה נשמר המפתח
+
+- המפתחות נשמרים **רק בדפדפן**, בנפרד מההגדרות (`src/lib/keyStore.ts`).
+- ברירת המחדל: **ללשונית הזו בלבד** (`sessionStorage`), והם נמחקים כשסוגרים אותה.
+- סימון "לזכור במכשיר הזה" מעביר אותם ל-`localStorage`. כפתור "מחק את כל המפתחות" מוחק את שניהם.
+- מפתחות שנשמרו בגרסאות קודמות בתוך `kulmus:settings:v1` עוברים פעם אחת לאחסון "לזכור במכשיר" ונמחקים מההגדרות.
+
+### מה השרת עושה עם המפתח
+
+המפתח נשלח בגוף בקשה אחת לנתיב ה-API שלנו, עובר משם לספק, ונשכח. הוא לא נרשם ביומנים, לא נשמר במטמון, בקובץ או במסד נתונים, ולא מוחזר בהודעות שגיאה (טקסט שגיאה מהספק עובר ניקוי). כל תשובות ה-API נשלחות עם `Cache-Control: no-store`. ההתחייבות כתובה גם בראש `src/lib/server/llm.ts`.
+
+### מפתחות בצד השרת
+
+מפתחות בצד השרת (`OPENROUTER_API_KEY` ודומיו, ראו `.env.example`) משמשים **רק** למשתמש שיש לו מנוי פעיל, לפי `getEntitlement(req)` ב-`src/lib/server/entitlement.ts`. כרגע הפונקציה מחזירה תמיד `free`, ולכן בקשה בלי מפתח מקבלת 401 `missing_key` גם אם מוגדרים מפתחות בשרת. במצב מנוי השרת בוחר בעצמו את הספק והמודל (`MANAGED_PROVIDER`, `MANAGED_MODEL`).
+
+"התחברות עם ChatGPT" מוצגת ככפתור מושבת: OpenAI פתחה אותה רק לשותפים נבחרים. הדגל `NEXT_PUBLIC_CHATGPT_SIGNIN=1` שמור למימוש עתידי.
 
 ## פריסה
 
@@ -34,10 +70,12 @@ npm run dev
 - `src/lib/segment.ts`: פירוק לפסקאות ומשפטים (Intl.Segmenter) וחלוקה למקטעים
 - `src/lib/heuristics.ts`: התאמת דפוסים, ציון, שקלול ומדדים
 - `src/lib/runAnalysis.ts`: הרצה בדפדפן, שני מקטעים במקביל ותוצאות שמתעדכנות בהדרגה
-- `src/lib/server/llm.ts`: מתאמי הספקים ו-Decisions API
-- `src/app/api/*`: ‏analyze, ‏rewrite, ‏extract (DOCX/PDF), ‏test, ‏models
+- `src/lib/keyStore.ts`: אחסון המפתחות בדפדפן (לשונית או מכשיר)
+- `src/lib/server/llm.ts`: מתאמי הספקים, בחירת מפתח (`resolveAccess`) ו-Decisions API
+- `src/lib/server/entitlement.ts`: מי רשאי להשתמש במפתחות השרת (נקודת החיבור של המנוי)
+- `src/app/api/*`: ‏analyze, ‏assess, ‏rewrite, ‏extract (DOCX/PDF), ‏test, ‏models
 - `docs/design-spec.md`: מפרט העיצוב והחוויה
 
 ## לגרסה בתשלום (בהמשך)
 
-הקוד כבר מוכן לכך בכמה מקומות: מפתחות בצד השרת (`resolveKey`), ותיעוד הספק, המודל וגרסת הכללים בכל ניתוח. עדיין חסרים התחברות משתמשים, היסטוריה בענן, מד שימוש, דף תמחור וייצוא דוח.
+הקוד כבר מוכן לכך בכמה מקומות: מפתחות בצד השרת מאחורי `getEntitlement`, ותיעוד הספק, המודל וגרסת הכללים בכל ניתוח. עדיין חסרים התחברות משתמשים, היסטוריה בענן, מד שימוש, דף תמחור וייצוא דוח.

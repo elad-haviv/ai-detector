@@ -118,3 +118,15 @@ export const IconFile = (p: SVGProps<SVGSVGElement>) => (
     <path d="M14 3v5h5" />
   </svg>
 );
+export const IconExternal = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M14 4h6v6M20 4l-9 9" />
+    <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+  </svg>
+);
+export const IconShield = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6Z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+);

@@ -1,6 +1,7 @@
 'use client';
 import { HEURISTICS_VERSION, blend, computeStats, documentPrior, findHits, heuristicResults, heuristicScore, localDocument, overallScore, sentencePrior } from './heuristics';
 import { chunkSentences, detectLang, segment } from './segment';
+import { getKey } from './keyStore';
 import { hasKey } from './store';
 import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, AssessRequest, AssessResponse, DocumentAssessment, Lang, Sentence, SentenceResult, Settings } from './types';
 
@@ -43,7 +44,7 @@ export function initialAnalysis(
     meta: {
       provider: llmOn ? settings.provider : undefined,
       model: llmOn ? settings.models[settings.provider] : undefined,
-      decisionModel: llmOn && settings.useDecisionModel && settings.keys.openrouter ? settings.decisionModel : undefined,
+      decisionModel: llmOn && settings.useDecisionModel && getKey('openrouter') ? settings.decisionModel : undefined,
       heuristicsVersion: HEURISTICS_VERSION,
     },
     source: opts?.source,
@@ -126,13 +127,13 @@ export async function enrich(
     emit();
     const body: AssessRequest = {
       provider: settings.provider,
-      apiKey: settings.keys[settings.provider],
+      apiKey: getKey(settings.provider),
       model: settings.models[settings.provider],
       paragraphs: documentParagraphs(a),
       features: local.features,
       explanationLanguage: lang,
       decisionModel: a.meta.decisionModel,
-      openrouterKey: settings.keys.openrouter,
+      openrouterKey: getKey('openrouter'),
     };
     try {
       let json: AssessResponse = {};
@@ -169,13 +170,13 @@ export async function enrich(
     emit();
     const body: AnalyzeChunkRequest = {
       provider: settings.provider,
-      apiKey: settings.keys[settings.provider],
+      apiKey: getKey(settings.provider),
       model: settings.models[settings.provider],
       sentences: chunk.map((s) => ({ id: s.id, text: s.text })),
       context: contextFor(a, chunk),
       explanationLanguage: lang,
       decisionModel: a.meta.decisionModel,
-      openrouterKey: settings.keys.openrouter,
+      openrouterKey: getKey('openrouter'),
     };
     let data: AnalyzeChunkResponse | null = null;
     let err: string | undefined;

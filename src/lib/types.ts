@@ -1,6 +1,10 @@
 import type { PatternCategory } from './patterns/catalog';
 
-export type ProviderId = 'openrouter' | 'google' | 'openai' | 'anthropic';
+export type ProviderId = 'openrouter' | 'google' | 'openai' | 'anthropic' | 'xai';
+export const PROVIDER_IDS: readonly ProviderId[] = ['openrouter', 'openai', 'anthropic', 'google', 'xai'];
+export function isProviderId(v: unknown): v is ProviderId {
+  return typeof v === 'string' && (PROVIDER_IDS as readonly string[]).includes(v);
+}
 export type Lang = 'he' | 'en';
 
 export interface Sentence {
@@ -123,7 +127,7 @@ export interface AssessResponse {
 
 export interface Settings {
   provider: ProviderId;
-  keys: Partial<Record<ProviderId, string>>;
+  /** API keys are NOT part of settings: they live in the separate key store (src/lib/keyStore.ts). */
   models: Record<ProviderId, string>;
   useDecisionModel: boolean;
   decisionModel: string;

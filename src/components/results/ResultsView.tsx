@@ -5,6 +5,7 @@ import { he } from '@/lib/i18n/he';
 import type { PatternCategory } from '@/lib/patterns/catalog';
 import { errorCode, explanationLang, type Progress } from '@/lib/runAnalysis';
 import { groupParagraphs } from '@/lib/segment';
+import { getKey } from '@/lib/keyStore';
 import { useSettings } from '@/lib/store';
 import type { Analysis, SentenceResult } from '@/lib/types';
 import { getFile } from '@/lib/blobStore';
@@ -139,7 +140,7 @@ export function ResultsView(props: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider: settings.provider,
-          apiKey: settings.keys[settings.provider],
+          apiKey: getKey(settings.provider),
           model: settings.models[settings.provider],
           text,
           context: analysis.context,

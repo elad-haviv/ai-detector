@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
 import { REWRITE_SYSTEM_PROMPT } from '@/lib/prompts';
-import { ProviderError, chatJson, parseJsonLoose, resolveKey } from '@/lib/server/llm';
+import { getEntitlement } from '@/lib/server/entitlement';
+import { json, readJson } from '@/lib/server/http';
+import { ProviderError, chatJson, parseJsonLoose, publicError, resolveAccess } from '@/lib/server/llm';
 import type { ProviderId } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -16,16 +17,17 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const b = (await req.json()) as Body;
-  if (!b.text?.trim() || b.text.length > 8000) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  const b = await readJson<Body>(req);
+  if (!b || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 8000) return json({ error: 'bad_request' }, { status: 400 });
   try {
+    const { provider, apiKey, model } = resolveAccess(await getEntitlement(req), b);
     const system = REWRITE_SYSTEM_PROMPT.replaceAll('{{EXPLANATION_LANGUAGE}}', b.explanationLanguage === 'he' ? 'Hebrew' : 'English');
     const user = `CONTEXT (register only): ${b.context?.trim() || '(none)'}\n\nPARAGRAPH:\n"""\n${b.text}\n"""`;
-    const text = await chatJson({ provider: b.provider, apiKey: resolveKey(b.provider, b.apiKey), model: b.model, system, user, maxTokens: 4000, signal: req.signal });
-    return NextResponse.json(parseJsonLoose(text));
+    const text = await chatJson({ provider, apiKey, model, system, user, maxTokens: 4000, signal: req.signal });
+    return json(parseJsonLoose(text));
   } catch (e) {
     const status = e instanceof ProviderError ? e.status : 500;
     const code = e instanceof ProviderError ? e.code : 'unknown';
-    return NextResponse.json({ error: code, message: e instanceof Error ? e.message : String(e) }, { status });
+    return json({ error: code, message: publicError(e, [b.apiKey]) }, { status });
   }
 }

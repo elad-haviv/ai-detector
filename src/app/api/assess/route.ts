@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
 import { ASSESS_SYSTEM_PROMPT, DOC_DECISION_QUESTION, buildAssessUserPrompt } from '@/lib/prompts';
-import { ProviderError, chatJson, decideDocument, parseJsonLoose, resolveKey } from '@/lib/server/llm';
+import { getEntitlement } from '@/lib/server/entitlement';
+import { json, readJson } from '@/lib/server/http';
+import { ProviderError, chatJson, decideDocument, parseJsonLoose, publicError, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
 import type { AssessRequest, AssessResponse } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -30,26 +31,24 @@ function sample(paragraphs: { i: number; text: string }[]) {
   return [...picked.values()].sort((x, y) => x.i - y.i);
 }
 
-function errMsg(e: unknown): string {
-  if (e instanceof ProviderError) return `${e.code}: ${e.message}`;
-  return e instanceof Error ? e.message : String(e);
-}
-
 /** Whole-document authorship assessment: language model verdict + optional decision-model verdict. */
 export async function POST(req: Request) {
-  const b = (await req.json()) as AssessRequest;
-  if (!Array.isArray(b.paragraphs) || !b.paragraphs.length) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  const b = await readJson<AssessRequest>(req);
+  if (!b || !Array.isArray(b.paragraphs) || !b.paragraphs.length) return json({ error: 'bad_request' }, { status: 400 });
+  const ent = await getEntitlement(req);
+  const secrets = [b.apiKey, b.openrouterKey];
   const shown = sample(b.paragraphs);
   const text = shown.map((p) => p.text).join('\n\n');
   const out: AssessResponse = { errors: {} };
 
   const llm = (async () => {
     const system = ASSESS_SYSTEM_PROMPT.replaceAll('{{EXPLANATION_LANGUAGE}}', b.explanationLanguage === 'he' ? 'Hebrew' : 'English');
+    const access = resolveAccess(ent, b);
     const call = async () => {
       const raw = await chatJson({
-        provider: b.provider,
-        apiKey: resolveKey(b.provider, b.apiKey),
-        model: b.model,
+        provider: access.provider,
+        apiKey: access.apiKey,
+        model: access.model,
         system,
         user: buildAssessUserPrompt(shown, b.features),
         maxTokens: 6000,
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
   const decision = b.decisionModel
     ? (async () => {
         out.decision = await decideDocument({
-          apiKey: resolveKey('openrouter', b.openrouterKey),
+          apiKey: resolveDecisionKey(ent, b.openrouterKey),
           model: b.decisionModel!,
           question: DOC_DECISION_QUESTION,
           text,
@@ -90,8 +89,8 @@ export async function POST(req: Request) {
     : Promise.resolve();
 
   const [l, d] = await Promise.allSettled([llm, decision]);
-  if (l.status === 'rejected') out.errors!.llm = errMsg(l.reason);
-  if (d.status === 'rejected') out.errors!.decision = errMsg(d.reason);
+  if (l.status === 'rejected') out.errors!.llm = publicError(l.reason, secrets);
+  if (d.status === 'rejected') out.errors!.decision = publicError(d.reason, secrets);
   const status = !out.llm && out.decision === undefined ? (l.status === 'rejected' && l.reason instanceof ProviderError ? l.reason.status : 502) : 200;
-  return NextResponse.json(out, { status });
+  return json(out, { status });
 }

@@ -1,11 +1,25 @@
+/**
+ * KEY HANDLING GUARANTEE (read before changing anything in this file or in src/app/api/*):
+ *
+ * - A browser-supplied API key (BYOK) arrives in the JSON body of ONE request, is passed straight
+ *   to the provider's HTTPS API for that request, and is then dropped. It is never logged, never
+ *   written to disk, a database, a cache or a cookie, and never kept in module state.
+ * - Nothing here or in the API routes logs request bodies, headers or keys. Do not add console.*
+ *   calls that could print them.
+ * - Upstream error text is scrubbed of the key (and of anything that looks like a key) before it
+ *   is returned to the client, and every API response carries `Cache-Control: no-store`.
+ * - Server env keys are used ONLY for an entitled (paying) user, decided by `getEntitlement(req)`
+ *   in ./entitlement.ts. There is no fallback to env keys for anyone else.
+ */
 import 'server-only';
-import type { ProviderId } from '../types';
+import { isProviderId, type ProviderId } from '../types';
+import type { Entitlement } from './entitlement';
 
 export class ProviderError extends Error {
   constructor(
     message: string,
     public status: number,
-    public code: 'invalid_key' | 'rate_limit' | 'bad_response' | 'missing_key' | 'upstream',
+    public code: 'invalid_key' | 'rate_limit' | 'bad_response' | 'missing_key' | 'upstream' | 'bad_request',
   ) {
     super(message);
   }
@@ -16,23 +30,87 @@ const ENV_KEYS: Record<ProviderId, string> = {
   google: 'GOOGLE_AI_API_KEY',
   openai: 'OPENAI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
+  xai: 'XAI_API_KEY',
 };
 
-/** Browser-supplied key wins; a server env key is the fallback (and the path for the future paid tier). */
-export function resolveKey(provider: ProviderId, supplied?: string): string {
-  const key = supplied?.trim() || process.env[ENV_KEYS[provider]];
-  if (!key) throw new ProviderError('missing key', 401, 'missing_key');
-  return key;
+/** Server-side default models for managed (subscription) mode, overridable with MANAGED_MODEL. */
+const MANAGED_DEFAULT_MODELS: Record<ProviderId, string> = {
+  openrouter: 'anthropic/claude-sonnet-5.5',
+  google: 'gemini-3.8-flash',
+  openai: 'gpt-6.1-terra',
+  anthropic: 'claude-sonnet-5-5',
+  xai: 'grok-4.3',
+};
+
+export interface Access {
+  provider: ProviderId;
+  apiKey: string;
+  model: string;
+  mode: 'byok' | 'managed';
 }
 
-async function failFrom(res: Response): Promise<never> {
+/**
+ * Decide which provider, key and model a request runs on:
+ * 1. the user's own key (BYOK) for the provider they chose, with their model;
+ * 2. else, for an entitled subscriber only, the operator's env key in managed mode
+ *    (MANAGED_PROVIDER / MANAGED_MODEL, chosen on the server so clients cannot pick costly models);
+ * 3. else 401 `missing_key` (the client falls back to local rules only).
+ */
+export function resolveAccess(ent: Entitlement, req: { provider?: unknown; apiKey?: unknown; model?: unknown }): Access {
+  const supplied = typeof req.apiKey === 'string' ? req.apiKey.trim() : '';
+  if (supplied) {
+    if (!isProviderId(req.provider)) throw new ProviderError('unknown provider', 400, 'bad_request');
+    const model = typeof req.model === 'string' && req.model.trim() ? req.model.trim() : MANAGED_DEFAULT_MODELS[req.provider];
+    return { provider: req.provider, apiKey: supplied, model, mode: 'byok' };
+  }
+  if (ent.plan === 'pro') {
+    const envProvider = process.env.MANAGED_PROVIDER;
+    const provider: ProviderId = isProviderId(envProvider) ? envProvider : 'openrouter';
+    const apiKey = process.env[ENV_KEYS[provider]]?.trim();
+    if (!apiKey) throw new ProviderError('managed mode is not configured on this server', 503, 'upstream');
+    return { provider, apiKey, model: process.env.MANAGED_MODEL?.trim() || MANAGED_DEFAULT_MODELS[provider], mode: 'managed' };
+  }
+  throw new ProviderError('missing key', 401, 'missing_key');
+}
+
+/** Key for the OpenRouter Decisions API: same rule as `resolveAccess` (own key, else entitled env key, else 401). */
+export function resolveDecisionKey(ent: Entitlement, supplied?: unknown): string {
+  const own = typeof supplied === 'string' ? supplied.trim() : '';
+  if (own) return own;
+  if (ent.plan === 'pro') {
+    const env = process.env.OPENROUTER_API_KEY?.trim();
+    if (env) return env;
+  }
+  throw new ProviderError('missing key', 401, 'missing_key');
+}
+
+/** Things that look like API keys, redacted from any text we send back even if we do not know the exact key. */
+const KEY_LIKE = /\b(?:sk-[A-Za-z0-9_-]{8,}|sk-ant-[A-Za-z0-9_-]{8,}|sk-or-[A-Za-z0-9_-]{8,}|xai-[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,})/g;
+
+/** Remove the given secrets (and anything key-shaped) from a message meant for the client. */
+export function scrubSecrets(text: string, secrets: (string | undefined)[] = []): string {
+  let out = text;
+  for (const s of secrets) {
+    const k = s?.trim();
+    if (k && k.length >= 6) out = out.split(k).join('[redacted]');
+  }
+  return out.replace(KEY_LIKE, '[redacted]');
+}
+
+/** Client-safe error string: `code: message`, scrubbed and length-limited. */
+export function publicError(e: unknown, secrets: (string | undefined)[] = []): string {
+  const raw = e instanceof ProviderError ? `${e.code}: ${e.message}` : e instanceof Error ? e.message : String(e);
+  return scrubSecrets(raw, secrets).slice(0, 600);
+}
+
+async function failFrom(res: Response, apiKey: string): Promise<never> {
   let msg = `${res.status} ${res.statusText}`;
   try {
     const body = await res.text();
     msg += `: ${body.slice(0, 500)}`;
   } catch {}
   const code = res.status === 401 || res.status === 403 ? 'invalid_key' : res.status === 429 ? 'rate_limit' : 'upstream';
-  throw new ProviderError(msg, res.status, code);
+  throw new ProviderError(scrubSecrets(msg, [apiKey]), res.status, code);
 }
 
 export interface ChatArgs {
@@ -45,10 +123,17 @@ export interface ChatArgs {
   signal?: AbortSignal;
 }
 
-/** Calls any of the four providers and returns raw text (expected to be JSON). */
+const OPENAI_COMPATIBLE: Partial<Record<ProviderId, string>> = {
+  openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+  openai: 'https://api.openai.com/v1/chat/completions',
+  xai: 'https://api.x.ai/v1/chat/completions',
+};
+
+/** Calls any supported provider and returns raw text (expected to be JSON). */
 export async function chatJson({ provider, apiKey, model, system, user, maxTokens = 8000, signal }: ChatArgs): Promise<string> {
-  if (provider === 'openrouter' || provider === 'openai') {
-    const url = provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+  const compatUrl = OPENAI_COMPATIBLE[provider];
+  if (compatUrl) {
+    const url = compatUrl;
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
     if (provider === 'openrouter') {
       headers['HTTP-Referer'] = process.env.APP_URL || 'http://localhost:3000';
@@ -68,7 +153,7 @@ export async function chatJson({ provider, apiKey, model, system, user, maxToken
         ...(provider === 'openai' ? { max_completion_tokens: maxTokens } : { max_tokens: maxTokens }),
       }),
     });
-    if (!res.ok) await failFrom(res);
+    if (!res.ok) await failFrom(res, apiKey);
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content;
     if (typeof text !== 'string') throw new ProviderError('empty response', 502, 'bad_response');
@@ -87,7 +172,7 @@ export async function chatJson({ provider, apiKey, model, system, user, maxToken
         generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens },
       }),
     });
-    if (!res.ok) await failFrom(res);
+    if (!res.ok) await failFrom(res, apiKey);
     const data = await res.json();
     const text = (data?.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || '').join('');
     if (!text) throw new ProviderError('empty response', 502, 'bad_response');
@@ -106,7 +191,7 @@ export async function chatJson({ provider, apiKey, model, system, user, maxToken
       messages: [{ role: 'user', content: user }],
     }),
   });
-  if (!res.ok) await failFrom(res);
+  if (!res.ok) await failFrom(res, apiKey);
   const data = await res.json();
   const text = (data?.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('');
   if (!text) throw new ProviderError('empty response', 502, 'bad_response');
@@ -191,7 +276,7 @@ export async function decide(args: {
     },
     body: JSON.stringify({ model: args.model, state, questions }),
   });
-  if (!res.ok) await failFrom(res);
+  if (!res.ok) await failFrom(res, args.apiKey);
   const data = await res.json();
   const out: Record<number, number> = {};
   for (const s of args.sentences) {
@@ -235,7 +320,7 @@ export async function decideDocument(args: { apiKey: string; model: string; ques
       },
     }),
   });
-  if (!res.ok) await failFrom(res);
+  if (!res.ok) await failFrom(res, args.apiKey);
   const data = await res.json();
   const a = data?.answers?.doc_ai;
   const p = typeof a?.noul === 'number' ? a.noul : a?.probabilities?.true;

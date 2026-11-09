@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { getKeys, migrateLegacyKeys, type ApiKeys } from './keyStore';
 import type { Analysis, ProviderId, Settings } from './types';
 
 export const DEFAULT_MODELS: Record<ProviderId, string> = {
@@ -7,18 +8,19 @@ export const DEFAULT_MODELS: Record<ProviderId, string> = {
   google: 'gemini-3.8-flash',
   openai: 'gpt-6.1-terra',
   anthropic: 'claude-sonnet-5-5',
+  xai: 'grok-4.3',
 };
 
 export const MODEL_SUGGESTIONS: Record<ProviderId, string[]> = {
-  openrouter: ['anthropic/claude-sonnet-5.5', 'anthropic/claude-haiku-5.5', 'google/gemini-3.8-flash', 'openai/gpt-6.1-terra', 'openai/gpt-6-luna'],
+  openrouter: ['anthropic/claude-sonnet-5.5', 'anthropic/claude-haiku-5.5', 'google/gemini-3.8-flash', 'openai/gpt-6.1-terra', 'openai/gpt-6-luna', 'x-ai/grok-4.3'],
   google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.1-flash-lite'],
   openai: ['gpt-6.1-terra', 'gpt-6.1-sol', 'gpt-6-luna'],
   anthropic: ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'],
+  xai: ['grok-4.3', 'grok-4.20', 'grok-4.7'],
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: 'openrouter',
-  keys: {},
   models: { ...DEFAULT_MODELS },
   useDecisionModel: true,
   decisionModel: 'typesafe/jev-1.14',
@@ -52,8 +54,11 @@ const listeners = new Set<() => void>();
 let cache: Settings | null = null;
 function readSettings(): Settings {
   if (!cache) {
-    const s = safeGet<Partial<Settings>>(SETTINGS_KEY, {});
-    cache = { ...DEFAULT_SETTINGS, ...s, models: { ...DEFAULT_MODELS, ...(s.models || {}) }, keys: { ...(s.keys || {}) } };
+    // keys used to live in this record: move them to the key store before reading
+    migrateLegacyKeys();
+    const { keys: _legacy, ...s } = safeGet<Partial<Settings> & { keys?: unknown }>(SETTINGS_KEY, {});
+    void _legacy;
+    cache = { ...DEFAULT_SETTINGS, ...s, models: { ...DEFAULT_MODELS, ...(s.models || {}) } };
   }
   return cache;
 }
@@ -79,8 +84,9 @@ export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
   return [s, update];
 }
 
-export function hasKey(s: Settings): boolean {
-  return Boolean(s.keys[s.provider]?.trim());
+/** True when the chosen provider has a key in the key store (pass `keys` from `useKeys()` in components). */
+export function hasKey(s: Settings, keys: ApiKeys = getKeys()): boolean {
+  return Boolean(keys[s.provider]?.trim());
 }
 
 // --- theme ---

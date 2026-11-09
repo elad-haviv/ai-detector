@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { he } from '@/lib/i18n/he';
 import { countWords } from '@/lib/segment';
+import { useKeys } from '@/lib/keyStore';
 import { hasKey, useSettings } from '@/lib/store';
 import { readBlocks } from '@/lib/docx/model';
 import { IconFile, IconInfo, IconUpload } from './icons';
@@ -26,6 +27,7 @@ export function InputPanel({
 }) {
   const [docx, setDocx] = useState<{ bytes: ArrayBuffer; name: string; text: string } | null>(null);
   const [settings] = useSettings();
+  const { keys } = useKeys();
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [context, setContext] = useState('');
@@ -149,7 +151,7 @@ export function InputPanel({
         ))}
       </ol>
 
-      {mounted && !hasKey(settings) && (
+      {mounted && !hasKey(settings, keys) && (
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-border border-s-4 border-s-warning bg-surface p-3 text-sm">
           <IconInfo className="mt-0.5 shrink-0 text-warning" />
           <p>
