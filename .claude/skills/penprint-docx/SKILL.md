@@ -23,6 +23,15 @@ this skill's `scripts/` directory. Use a scratch working directory `W` for inter
   use and disclosure.
 - Never overwrite the user's original file. Write the fixed copy and the report next to it.
 
+## Reading the user's request
+
+- **File:** the `.docx` the user attached or named. If it was uploaded to the chat, locate it on disk (check the
+  upload/working directory) before step 1. If it is not a `.docx`, say so and stop.
+- **Threshold:** if the user states a percentage ("תקן מ-70% ומעלה", "fix anything above 40%"), use exactly that as
+  `--threshold N` (0-100). Only when they give none, use the default 55 and tell them. A lower number fixes more
+  sentences, a higher one fewer.
+- Answer in the user's language (Hebrew or English).
+
 ## Steps
 
 1. **Extract and run the local pass**
@@ -56,8 +65,8 @@ this skill's `scripts/` directory. Use a scratch working directory `W` for inter
    ```bash
    $S/run.sh score $W/analysis.json $W/judgments.json $W/scored.json [--threshold 55] [--lang he|en] [--keep-placeholders]
    ```
-   Blends your judgments with the local signals exactly as the site does. `--threshold` is the site's sensitivity
-   (low 70, **medium 55 default**, high 40). A flagged sentence is rewritten when it has a usable rewrite;
+   Blends your judgments with the local signals exactly as the site does. `--threshold` is the user's percentage if given; otherwise
+   the site's "medium" 55 (site presets: low 70, high 40). A flagged sentence is rewritten when it has a usable rewrite;
    rewrites that contain a `[placeholder]` for the author are **not** applied by default (they go to the report's
    "needs your input" list) unless `--keep-placeholders`. Use `-` instead of `judgments.json` for local rules
    only (no rewrites; the score is then only an indication; say so).
