@@ -47,30 +47,47 @@ const PLACEHOLDER = /\[[^\]\n]{2,60}\]/; // "[לציין איזה ממצא]", "[
 const CITATION_BRACKET = /^\[\d+(?:\s*[,–-]\s*\d+)*\]$/;
 const hasPlaceholder = (s) => (s.match(new RegExp(PLACEHOLDER, 'g')) || []).some((m) => !CITATION_BRACKET.test(m));
 
+// Not prose: code listings, bibliography entries, equations/units, labels and fragments. They are not judged,
+// not edited, and do not count toward the score or the style metrics.
+const CODE = /[=;{}]|^\s*%|\\[a-z]+|\b(?:function|end|if|for|while|return|clear|plot|figure)\b\s*[(\w]|^['"\w]+\s*[=(]|\.\.\.\s*$/;
+const REFERENCE = /\b(?:vol\.|pp\.|no\.\s*\d|Proc\.|IEEE|Trans(?:actions)?\b|doi|ISBN|Press|Publishers?|Conf\.|Jour(?:nal)?\b)/i;
+export function isProse(t, words) {
+  const letters = (t.match(/\p{L}/gu) || []).length;
+  if (words < 5 || letters / Math.max(1, t.length) < 0.6) return false;
+  if (CODE.test(t) && !/[.!?:]$/.test(t.trim())) return false;
+  if (/^\s*(?:\d+(?:\.\d+)*\.?\s*)?\S+(?:\s+\S+){0,3}\s*$/.test(t) && !/[.!?]$/.test(t.trim())) return false; // heading-like
+  if (REFERENCE.test(t) && /(?:19|20)\d{2}/.test(t) && /,/.test(t) && words > 8 && !/\bאת\b|\bהוא\b|\bthe\b/i.test(t.slice(0, 40)) && /(?:vol\.|pp\.|IEEE|Proc\.|ISBN|doi)/i.test(t)) return false;
+  return true;
+}
+
 function analyze([blocksPath, outPath, rubricPath]) {
   const { blocks, source } = read(blocksPath);
   const sentences = [];
   let id = 0;
   blocks.forEach((b, bi) => {
-    for (const s of splitSentences(b.text)) sentences.push({ id: id++, paragraph: bi, text: s, lang: detectLang(s), words: countWords(s) });
+    for (const s of splitSentences(b.text)) sentences.push({ id: id++, paragraph: bi, text: s, lang: detectLang(s), words: countWords(s), ...(b.obj ? { obj: true } : {}) });
   });
   if (!sentences.length) throw new Error('no text found in the document');
   const results = heuristicResults(sentences);
-  const doc = localDocument(sentences, results);
+  for (const s of sentences) if (!isProse(s.text, s.words)) results[s.id].ignored = true;
+  const prose = sentences.filter((s) => !results[s.id].ignored);
+  if (!prose.length) throw new Error('no prose found in the document');
+  const doc = localDocument(prose, results);
   const paragraphs = [];
-  for (const s of sentences) (paragraphs[s.paragraph] ||= []).push(s.text);
+  for (const s of prose) (paragraphs[s.paragraph] ||= []).push(s.text);
   const paras = paragraphs.map((t, i) => (t ? { i, text: t.join(' ') } : null)).filter(Boolean);
-  const text = sentences.map((s) => s.text).join(' ');
+  const text = prose.map((s) => s.text).join(' ');
   const out = {
     source,
     heuristicsVersion: HEURISTICS_VERSION,
     textLang: detectLang(text),
     sentences,
     results,
-    stats: computeStats(sentences),
+    stats: computeStats(prose),
+    ignored: sentences.length - prose.length,
     features: doc.features,
     paragraphs: paras,
-    chunks: chunkSentences(sentences, 30, 900).map((c) => c.map((s) => s.id)),
+    chunks: chunkSentences(prose, 30, 900).map((c) => c.map((s) => s.id)),
   };
   write(outPath, out);
 
@@ -100,7 +117,7 @@ function analyze([blocksPath, outPath, rubricPath]) {
     '',
   ].join('\n');
   write(rubricPath, rubric);
-  console.log(JSON.stringify({ sentences: sentences.length, paragraphs: paras.length, words: out.stats.words, chunks: out.chunks.length, localHits: Object.values(results).filter((r) => r.hits.length).length }));
+  console.log(JSON.stringify({ sentences: sentences.length, paragraphs: paras.length, words: out.stats.words, chunks: out.chunks.length, proseSentences: prose.length, ignored: sentences.length - prose.length, localHits: prose.filter((x) => results[x.id].hits.length).length }));
 }
 
 function score([analysisPath, judgmentsPath, outPath]) {
@@ -109,7 +126,8 @@ function score([analysisPath, judgmentsPath, outPath]) {
   const threshold = flags.threshold !== undefined ? Number(flags.threshold) : 55; // site's "medium" sensitivity
   const lang = flags.lang || a.textLang;
   const results = { ...a.results };
-  const local = localDocument(a.sentences, results);
+  const prose = a.sentences.filter((s) => !results[s.id].ignored);
+  const local = localDocument(prose, results);
   const d = j?.document;
   const document = {
     ...local,
@@ -134,6 +152,7 @@ function score([analysisPath, judgmentsPath, outPath]) {
     };
     const sp = sentencePrior(document, s.paragraph);
     next.probability = blend(next, sp.prior, sp.weight);
+    if (next.ignored) Object.assign(next, { probability: 0, patterns: [], rewrite: null, explanation: undefined });
     results[s.id] = next;
   }
   const overall = { ...overallScore(a.sentences, results, undefined, document), summary: document.summary };
@@ -145,8 +164,9 @@ function score([analysisPath, judgmentsPath, outPath]) {
     const r = results[s.id];
     let action = 'keep';
     let reason;
-    if (r.probability >= threshold) {
+    if (!r.ignored && r.probability >= threshold) {
       if (!r.rewrite) { action = 'flagged'; reason = judged ? 'noRewrite' : 'localOnly'; }
+      else if (s.obj) { action = 'flagged'; reason = 'hasObject'; }
       else if (r.rewrite.trim() === s.text.trim()) { action = 'flagged'; reason = 'noRewrite'; }
       else if (hasPlaceholder(r.rewrite) && !flags['keep-placeholders']) { action = 'flagged'; reason = 'needsInput'; }
       else action = 'apply';
@@ -181,7 +201,7 @@ function score([analysisPath, judgmentsPath, outPath]) {
     // after-fix estimate: local signals only (rewrites are not re-judged by a model)
     edits: applied.map((s) => ({ id: s.id, block: s.paragraph, old: s.text, new: results[s.id].rewrite.trim() })),
   });
-  const flagged = a.sentences.filter((s) => results[s.id].probability >= threshold).length;
+  const flagged = a.sentences.filter((s) => !results[s.id].ignored && results[s.id].probability >= threshold).length;
   console.log(JSON.stringify({ overall, judged, flagged, willApply: applied.length, needInput: a.sentences.filter((s) => decisions[s.id].reason === 'needsInput').length, threshold }));
 }
 

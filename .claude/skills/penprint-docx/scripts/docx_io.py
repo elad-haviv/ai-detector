@@ -90,7 +90,12 @@ def blocks_of(root):
     for i, p in enumerate(paras(root)):
         txt = text_of(para_slots(p))
         if txt.strip():
-            out.append({'pIndex': i, 'text': txt})
+            b = {'pIndex': i, 'text': txt}
+            # equations, images, embedded objects: not text runs, so a rewrite could misplace them
+            if p.find('.//{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath') is not None or any(
+                    True for _ in p.iter(q('drawing'), q('object'), q('pict'))):
+                b['obj'] = True
+            out.append(b)
     return out
 
 
@@ -164,7 +169,7 @@ T = {
         note=['Each sentence is scored by blending a reading of the sentence in its document context, the whole-document and paragraph assessment, and local rules for known AI-style phrasing and structure (the same method as the Penprint site).',
               'Rewrites keep the meaning, numbers, names and citations, and add no new claims. Read every change before you submit: the author is responsible for the final text and for following their institution\'s rules on AI use and disclosure.',
               'The formatting of the original document is preserved; only the text of changed sentences was edited.'],
-        reasons={'needsInput': 'Needs a detail from you', 'noRewrite': 'No rewrite suggested', 'localOnly': 'Local rules only, no model reading'},
+        reasons={'hasObject': 'Paragraph contains an equation or image: edit by hand', 'needsInput': 'Needs a detail from you', 'noRewrite': 'No rewrite suggested', 'localOnly': 'Local rules only, no model reading'},
         cats={'vocabulary': 'Vocabulary', 'structure': 'Structure', 'tone': 'Tone', 'formatting': 'Formatting', 'rhetoric': 'Rhetoric', 'citation': 'Citation', 'filler': 'Filler'},
     ),
     'he': dict(
@@ -184,7 +189,7 @@ T = {
         note=['כל משפט מקבל ציון משילוב של קריאה של המשפט בהקשר המסמך, הערכה של המסמך והפסקה כולה, וכללים מקומיים לביטויים ולמבנים מוכרים של כתיבת AI (אותה שיטה כמו באתר טביעת עט).',
               'הניסוחים החלופיים שומרים על המשמעות, המספרים, השמות וההפניות, ולא מוסיפים טענות חדשות. קראו כל שינוי לפני ההגשה: האחריות לטקסט הסופי, ולציות לכללי המוסד בנושא שימוש ב-AI וגילוי נאות, היא של המחבר/ת.',
               'עיצוב המסמך המקורי נשמר; רק הטקסט של המשפטים ששונו נערך.'],
-        reasons={'needsInput': 'דורש פרט ממך', 'noRewrite': 'לא הוצע ניסוח חלופי', 'localOnly': 'כללים מקומיים בלבד, בלי קריאת מודל'},
+        reasons={'hasObject': 'הפסקה כוללת משוואה או תמונה: לערוך ידנית', 'needsInput': 'דורש פרט ממך', 'noRewrite': 'לא הוצע ניסוח חלופי', 'localOnly': 'כללים מקומיים בלבד, בלי קריאת מודל'},
         cats={'vocabulary': 'אוצר מילים', 'structure': 'מבנה', 'tone': 'טון', 'formatting': 'עיצוב', 'rhetoric': 'רטוריקה', 'citation': 'הפניות', 'filler': 'מילוי'},
     ),
 }
