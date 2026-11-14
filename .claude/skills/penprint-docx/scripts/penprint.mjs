@@ -13,16 +13,23 @@
  *       rewrites to apply, and write everything the report needs.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { PATTERNS } from '../../../../src/lib/patterns/catalog.ts';
-import { he } from '../../../../src/lib/i18n/he.ts';
-import { en } from '../../../../src/lib/i18n/en.ts';
-import { PATTERN_TEXT_EN } from '../../../../src/lib/patterns/catalog.en.ts';
-import { ASSESS_SYSTEM_PROMPT, DETECTION_SYSTEM_PROMPT, REWRITE_SYSTEM_PROMPT, buildAssessUserPrompt } from '../../../../src/lib/prompts.ts';
-import { chunkSentences, countWords, detectLang, splitSentences } from '../../../../src/lib/segment.ts';
-import {
-  HEURISTICS_VERSION, HIGH_PROBABILITY, PATTERN_BY_ID, blend, computeStats, documentPrior, heuristicResults,
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// In the repo the engine imports src/lib directly; an installed copy carries a vendored src/lib (see install.sh).
+const here = fileURLToPath(new URL('.', import.meta.url));
+const LIB = existsSync(here + '../vendor/lib') ? '../vendor/lib/' : '../../../../src/lib/';
+const imp = (p) => import(new URL(LIB + p, import.meta.url).href);
+const { he } = await imp('i18n/he.ts');
+const { en } = await imp('i18n/en.ts');
+const { PATTERNS } = await imp('patterns/catalog.ts');
+const { PATTERN_TEXT_EN } = await imp('patterns/catalog.en.ts');
+const { ASSESS_SYSTEM_PROMPT, DETECTION_SYSTEM_PROMPT, REWRITE_SYSTEM_PROMPT, buildAssessUserPrompt } = await imp('prompts.ts');
+const { chunkSentences, countWords, detectLang, splitSentences } = await imp('segment.ts');
+const {
+  HEURISTICS_VERSION, HIGH_PROBABILITY, PATTERN_BY_ID, blend, computeStats, heuristicResults,
   localDocument, overallScore, sentencePrior,
-} from '../../../../src/lib/heuristics.ts';
+} = await imp('heuristics.ts');
 
 const [cmd, ...rest] = process.argv.slice(2);
 const flags = {};
