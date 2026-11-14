@@ -1,6 +1,7 @@
 import { PATTERNS, type Pattern } from './patterns/catalog';
 import type { Analysis, DocStats, DocumentAssessment, PatternHit, Sentence, SentenceResult, StyleFeatures } from './types';
 import { countWords } from './segment';
+import type { FileForensics } from './forensics/types';
 
 export const HEURISTICS_VERSION = 'h1';
 /** Sentences at or above this probability count as "high" in the overall score and on the score card. */
@@ -249,6 +250,13 @@ export function documentPrior(doc?: DocumentAssessment): number | undefined {
 }
 
 /**
+ * Weight of the file-forensics score in the overall pool. A file that was clearly machine-made
+ * (score ≈ 90) moves an undecided text from 50% to about 68%, and a text the models read as
+ * human (15%) to about 27%: it shifts the number without overruling what the text itself shows.
+ */
+export const FILE_WEIGHT = 0.35;
+
+/**
  * Document score. Once any sentence has a model verdict, only model-checked sentences count:
  * unchecked sentences carry only weak lexical evidence and would drag the score toward 0.
  * `coverage` is the share of words the model has checked; `basis` says what the number rests on.
@@ -258,6 +266,7 @@ export function overallScore(
   results: Record<number, SentenceResult>,
   llmOverall?: number,
   doc?: DocumentAssessment,
+  file?: FileForensics,
 ): Analysis['overall'] {
   const all = sentences.filter((s) => results[s.id] && !results[s.id].ignored);
   const totalWords = all.reduce((a, s) => a + Math.max(1, s.words), 0);
@@ -284,6 +293,8 @@ export function overallScore(
   // Whole-document evidence dominates; the sentence aggregate refines it.
   const lf = doc ? Math.min(1, doc.features.sentences / 12) : 0;
   const docVerdict = doc?.llm ?? llmOverall;
+  // File forensics (metadata, dates, figures): counted only when it found something either way.
+  const fileP = file && file.score !== 50 ? file.score : undefined;
   let parts: [number, number][];
   let p: number;
   if (docVerdict !== undefined) {
@@ -293,11 +304,13 @@ export function overallScore(
     ];
     if (doc) parts.push([doc.style, 0.25 * lf]);
     if (doc?.decision !== undefined) parts.push([decisionAdjusted(doc.decision), 0.15]);
+    if (fileP !== undefined) parts.push([fileP, FILE_WEIGHT]);
     p = poolLogits(parts);
   } else {
     // local only: no model verdict, so stay conservative (plain weighted mean)
     parts = [[sentenceAgg, 0.15]];
     if (doc) parts.push([doc.style, 0.25 * lf]);
+    if (fileP !== undefined) parts.push([fileP, 0.15]);
     const w = parts.reduce((a, [, x]) => a + x, 0);
     p = parts.reduce((a, [v, x]) => a + v * x, 0) / w;
   }

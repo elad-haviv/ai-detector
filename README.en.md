@@ -6,6 +6,16 @@ Penprint analyzes academic text in Hebrew and English, sentence by sentence. It 
 
 Each sentence gets a weighted score from a language model (OpenRouter, OpenAI, Anthropic, Google AI Studio or xAI), an optional decision model (e.g. TypeSafe's Jev via OpenRouter Decisions) and local rules (`src/lib/patterns/catalog.ts`, built from Wikipedia's "Signs of AI writing", stop-slop and humanizer, with Hebrew equivalents). Without a key the site runs on local rules only.
 
+## File check (Word / PDF)
+
+An uploaded .docx or .pdf is also examined as a file, independent of its wording (`src/lib/forensics/`):
+
+- **Metadata**: the program that made the file. Code libraries (python-docx, docx for JavaScript, ReportLab, FPDF, WeasyPrint…) are how chat assistants build downloadable files. Also: a PDF that is a browser print of a chat page, and links tagged `utm_source=chatgpt.com` and the like.
+- **Dates and editing history**: in Word, editing time against word count (text pasted rather than typed), the editing sessions (rsids) that put the text in, tracked changes and comments. In both: a save date before the creation date, or a date in the future.
+- **Figures**: image metadata only, never pixels: Content Credentials (C2PA) declaring AI generation, IPTC `trainedAlgorithmicMedia`, Stable Diffusion parameters, AI image tools' file names, generators' default sizes, camera EXIF, and charts drawn by code (noted, not counted).
+
+Each finding has a weight (`WEIGHTS` in `score.ts`); the sum becomes a 0–100 score that enters the overall pool with weight 0.35 (`FILE_WEIGHT`), and only when something was found. This is circumstantial evidence: metadata is easy to change, and pasted text was written elsewhere, not necessarily by AI. The weights are judgment calls, not fitted to data. Word files are inspected in the browser; PDFs in `/api/extract`, which stores nothing.
+
 ## Three ways to use it
 
 1. **Your own API key (free, BYOK).** Keys stay in the browser: this tab only (`sessionStorage`) by default, or "Remember on this device" (`localStorage`). The server passes a key to the provider for one request and forgets it.
@@ -32,6 +42,7 @@ Essential only: `penprint_session` (sign-in, 30 days), `penprint_oauth` (Google 
 ## Checks
 
 - `npm run lint`, `npm run build`
+- `npm run check:forensics`: checks for the file-check layer (no network). Given a .docx path, prints its report.
 - `npm run check:m3`: unit checks (session signing, PKCE, Google claims, Paddle with a fake fetch, rate limit, locale resolution, he/en dictionary parity, English pattern text).
 - `A11Y_BASE_URL=http://localhost:3000 npm run a11y`: axe-core audit (SI 5568 / WCAG 2.1 AA) of every route and main state, in Hebrew and English, light and dark, at 1280px and 320px.
 

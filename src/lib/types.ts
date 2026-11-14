@@ -1,4 +1,5 @@
 import type { PatternCategory } from './patterns/catalog';
+import type { FileForensics } from './forensics/types';
 
 export type ProviderId = 'openrouter' | 'google' | 'openai' | 'anthropic' | 'xai';
 export const PROVIDER_IDS: readonly ProviderId[] = ['openrouter', 'openai', 'anthropic', 'google', 'xai'];
@@ -75,6 +76,8 @@ export interface Analysis {
   meta: { provider?: ProviderId; model?: string; decisionModel?: string; heuristicsVersion: string; mode?: 'byok' | 'managed' };
   /** Original file kept in IndexedDB (key = analysis id) so the formatted Word view can be rendered. */
   source?: { kind: 'docx'; fileName: string };
+  /** What the uploaded Word/PDF file says about how it was made (metadata, dates, figures). */
+  file?: FileForensics;
 }
 
 export interface StyleFeatures {

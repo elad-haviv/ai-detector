@@ -8,6 +8,8 @@ import { llmMode, useSettings } from '@/lib/store';
 import { useAccount } from '@/lib/account';
 import { OnboardingChooser } from './OnboardingChooser';
 import { readBlocks } from '@/lib/docx/model';
+import { inspectDocx } from '@/lib/forensics/docx';
+import type { FileForensics } from '@/lib/forensics/types';
 import { IconFile, IconUpload } from './icons';
 import { Button, Field, Input, Textarea, useToast } from './ui';
 
@@ -19,13 +21,15 @@ export function InputPanel({
   onAnalyze,
   onAnalyzeDocx,
 }: {
-  onAnalyze: (text: string, title: string, context: string) => void;
-  onAnalyzeDocx: (bytes: ArrayBuffer, fileName: string, title: string, context: string) => void;
+  onAnalyze: (text: string, title: string, context: string, file?: FileForensics) => void;
+  onAnalyzeDocx: (bytes: ArrayBuffer, fileName: string, title: string, context: string, file?: FileForensics) => void;
 }) {
   const t = useT();
   const locale = useLocale();
   const uiDir = dirOf(locale);
   const [docx, setDocx] = useState<{ bytes: ArrayBuffer; name: string; text: string } | null>(null);
+  /** Forensics of the uploaded Word/PDF file; kept until the text is cleared or another file is loaded. */
+  const [fileInfo, setFileInfo] = useState<FileForensics | null>(null);
   const [settings] = useSettings();
   const { keys } = useKeys();
   const account = useAccount();
@@ -46,6 +50,7 @@ export function InputPanel({
   async function loadFile(file: File) {
     setError(null);
     setBusy(true);
+    setFileInfo(null);
     try {
       const lower = file.name.toLowerCase();
       if (lower.endsWith('.txt') || lower.endsWith('.md')) {
@@ -66,6 +71,8 @@ export function InputPanel({
         setText(extracted);
         setTitle(file.name.replace(/\.[^.]+$/, ''));
         setDocx({ bytes, name: file.name, text: extracted });
+        // a file whose properties cannot be read is still analyzed as text
+        setFileInfo(await inspectDocx(bytes, file.name).catch(() => null));
         toast(t.input.fileLoaded.replace('{name}', file.name), { tone: 'success' });
         return;
       }
@@ -80,6 +87,7 @@ export function InputPanel({
       }
       setText(data.text);
       setTitle(data.title);
+      setFileInfo(data.file ?? null);
       toast(t.input.fileLoaded.replace('{name}', file.name), { tone: 'success' });
     } catch {
       setError(t.errors.network);
@@ -132,8 +140,9 @@ export function InputPanel({
   const textError = tooLong ? t.errors.tooLong.replace('{max}', num(MAX_WORDS)) : undefined;
   const analyze = () => {
     if (!canAnalyze) return;
-    if (docx && docx.text === text) onAnalyzeDocx(docx.bytes, docx.name, title, context);
-    else onAnalyze(text, title, context);
+    const file = fileInfo ?? undefined;
+    if (docx && docx.text === text) onAnalyzeDocx(docx.bytes, docx.name, title, context, file);
+    else onAnalyze(text, title, context, file);
   };
 
   return (
@@ -211,7 +220,10 @@ export function InputPanel({
             <Textarea
               {...p}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (!e.target.value.trim()) setFileInfo(null);
+              }}
               placeholder={t.input.placeholder}
               dir={text ? 'auto' : uiDir}
               rows={12}
@@ -261,6 +273,7 @@ export function InputPanel({
                 setText('');
                 setTitle('');
                 setDocx(null);
+                setFileInfo(null);
               }}
             >
               {t.input.clearButton}
