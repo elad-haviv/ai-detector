@@ -16,7 +16,7 @@ import { IconChevron, IconDownload, IconFilter, IconRefresh, IconX } from '../ic
 import { Button, Dialog, useToast } from '../ui';
 import { DocxView, type Decor } from './DocxView';
 import { Inspector } from './Inspector';
-import { CATEGORIES, Filters, ProgressList, ScoreCard, Stats, TopPatterns } from './SummaryPanel';
+import { CATEGORIES, FileCard, Filters, ProgressList, ScoreCard, Stats, TopPatterns } from './SummaryPanel';
 import { BandLegend, ScoreRing, bandOf } from './shared';
 
 interface Props {
@@ -277,6 +277,7 @@ export function ResultsView(props: Props) {
     <>
       <ScoreCard analysis={analysis} pending={llmPending} dirty={dirty} />
       {progress && running && <ProgressList progress={progress} onCancel={props.onCancel} />}
+      {analysis.file && <FileCard file={analysis.file} />}
       <Filters
         analysis={analysis}
         threshold={threshold}

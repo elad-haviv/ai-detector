@@ -1,10 +1,11 @@
 'use client';
 import { HIGH_PROBABILITY, PATTERN_BY_ID } from '@/lib/heuristics';
-import { fmt, type Dict } from '@/lib/i18n';
+import { fmt, intlLocale, type Dict } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n/client';
 import { patternText } from '@/lib/patterns/text';
 import type { PatternCategory } from '@/lib/patterns/catalog';
 import type { Progress } from '@/lib/runAnalysis';
+import type { FileForensics } from '@/lib/forensics/types';
 import type { Analysis } from '@/lib/types';
 import { ScoreRing, scoreBand } from './shared';
 
@@ -71,6 +72,7 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
           <SignalRow label={t.score.documentJudgment} value={analysis.document.llm} note={analysis.document.status === 'pending' ? t.score.checking : analysis.document.status === 'failed' ? t.score.failed : undefined} />
           <SignalRow label={t.score.styleIndex} value={analysis.document.style} note={analysis.document.features.sentences < 8 ? t.score.shortText : undefined} />
           {analysis.document.decision !== undefined && <SignalRow label={t.score.decisionModel} value={analysis.document.decision} />}
+          {analysis.file && analysis.file.score !== 50 && <SignalRow label={t.file.signal} value={analysis.file.score} />}
           {(!!analysis.document.aiEvidence?.length || !!analysis.document.humanEvidence?.length) && (
             <details className="pt-1 text-xs">
               <summary className="flex min-h-9 cursor-pointer items-center font-semibold text-muted">{t.score.evidence}</summary>
@@ -96,6 +98,67 @@ export function ScoreCard({ analysis, pending, dirty }: { analysis: Analysis; pe
         <summary className="flex min-h-9 cursor-pointer items-center font-semibold">{t.score.whatTitle}</summary>
         <p className="mt-1 leading-relaxed">{t.score.whatBody}</p>
       </details>
+    </div>
+  );
+}
+
+/** File forensics: findings from the uploaded file's metadata, dates and figures. */
+export function FileCard({ file }: { file: FileForensics }) {
+  const t = useT();
+  const locale = useLocale();
+  const when = (iso?: string) => (iso ? new Date(iso).toLocaleString(intlLocale(locale), { dateStyle: 'medium', timeStyle: 'short' }) : undefined);
+  const m = file.meta;
+  const facts: [string, string | number | undefined][] = [
+    [file.kind === 'pdf' ? t.file.facts.creator : '', m.creator],
+    [file.kind === 'pdf' ? t.file.facts.producer : t.file.facts.application, m.application],
+    [t.file.facts.author, m.author],
+    [t.file.facts.lastModifiedBy, m.lastModifiedBy],
+    [t.file.facts.title, m.title],
+    [t.file.facts.created, when(m.created)],
+    [t.file.facts.modified, when(m.modified)],
+    [t.file.facts.editMinutes, m.editMinutes !== undefined ? fmt(t.file.minutes, { count: m.editMinutes }) : undefined],
+    [t.file.facts.revision, m.revision],
+    [t.file.facts.sessions, m.sessions],
+    [t.file.facts.words, m.words],
+    [t.file.facts.figures, file.figures || undefined],
+  ];
+  // strongest first; notes (weight 0) last
+  const findings = [...file.findings].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+  return (
+    <div className="card p-4">
+      <div className="text-caption font-semibold">{t.file.title}</div>
+      <p dir="auto" className="break-all text-xs text-muted">
+        {file.fileName}
+      </p>
+      <p className="mt-1 text-xs text-muted">{t.file.intro}</p>
+      {findings.length ? (
+        <ul className="mt-3 space-y-2">
+          {findings.map((f, i) => (
+            <li key={i} className="text-sm">
+              <span className={`block text-xs font-semibold ${f.weight > 0 ? 'text-danger' : f.weight < 0 ? 'text-success' : 'text-muted'}`}>
+                {f.weight > 0 ? t.file.pointsAi : f.weight < 0 ? t.file.pointsHuman : t.file.note}
+              </span>
+              {fmt(t.file.findings[f.id] ?? f.id, f.vars || {})}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm">{t.file.none}</p>
+      )}
+      <details className="mt-2 text-xs">
+        <summary className="flex min-h-9 cursor-pointer items-center font-semibold text-muted">{t.file.details}</summary>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+          {facts
+            .filter(([label, v]) => label && v !== undefined)
+            .map(([label, v]) => (
+              <div key={label} className="contents">
+                <dt className="text-muted">{label}</dt>
+                <dd dir="auto" className="break-words">{v}</dd>
+              </div>
+            ))}
+        </dl>
+      </details>
+      <p className="mt-2 text-micro leading-snug text-muted">{t.file.caveat}</p>
     </div>
   );
 }

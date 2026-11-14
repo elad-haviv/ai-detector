@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "check:m3": "node --conditions=react-server --experimental-strip-types --no-warnings scripts/check-m3.ts",
-    "a11y": "node scripts/a11y.mjs"
+    "a11y": "node scripts/a11y.mjs",
+    "check:forensics": "tsx scripts/check-forensics.mts"
   },
   "dependencies": {
     "docx-preview": "^0.4.1",
@@ -32,6 +33,7 @@
     "eslint-config-next": "15.5.29",
     "playwright": "^1.63.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

@@ -1,10 +1,16 @@
 import { json } from '@/lib/server/http';
+import { inspectDocx } from '@/lib/forensics/docx';
+import { inspectPdf, type PdfInfo } from '@/lib/forensics/pdf';
+import type { FileForensics } from '@/lib/forensics/types';
 
 export const runtime = 'nodejs';
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
-/** Extract plain text (paragraphs separated by blank lines) from .docx / .pdf / .txt / .md uploads. */
+/**
+ * Extract plain text (paragraphs separated by blank lines) from .docx / .pdf / .txt / .md uploads.
+ * Word and PDF files also get a forensics report (`file`): metadata, dates, figures.
+ */
 export async function POST(req: Request) {
   let form: FormData;
   try {
@@ -20,16 +26,19 @@ export async function POST(req: Request) {
 
   try {
     let text = '';
+    let forensics: FileForensics | undefined;
     if (name.endsWith('.txt') || name.endsWith('.md')) {
       text = buf.toString('utf8');
     } else if (name.endsWith('.docx')) {
       const mammoth = await import('mammoth');
       const r = await mammoth.extractRawText({ buffer: buf });
       text = r.value;
+      forensics = await inspectDocx(buf, file.name).catch(() => undefined);
     } else if (name.endsWith('.pdf')) {
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
       const doc = await pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false }).promise;
       const pages: string[] = [];
+      const links: string[] = [];
       for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
         const content = await page.getTextContent();
@@ -53,6 +62,7 @@ export async function POST(req: Request) {
         }
         if (line) lines.push(line);
         pages.push(lines.join('\n'));
+        for (const a of (await page.getAnnotations().catch(() => [])) as { url?: string }[]) if (a.url) links.push(a.url);
       }
       // Re-join hard-wrapped lines inside a paragraph
       text = pages
@@ -62,10 +72,16 @@ export async function POST(req: Request) {
         .filter(Boolean)
         .join('\n\n');
       if (text.replace(/\s/g, '').length < 20) return json({ error: 'scanned_pdf' }, { status: 422 });
+      try {
+        const info = ((await doc.getMetadata()).info || {}) as PdfInfo;
+        forensics = inspectPdf(new Uint8Array(buf), file.name, info, links, text.split(/\s+/).filter(Boolean).length);
+      } catch {
+        // unreadable metadata: the text is still analyzed
+      }
     } else {
       return json({ error: 'invalid_file' }, { status: 415 });
     }
-    return json({ text: text.trim(), title: file.name.replace(/\.[^.]+$/, '') });
+    return json({ text: text.trim(), title: file.name.replace(/\.[^.]+$/, ''), file: forensics });
   } catch (e) {
     return json({ error: 'invalid_file', message: e instanceof Error ? e.message : String(e) }, { status: 422 });
   }

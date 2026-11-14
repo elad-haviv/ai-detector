@@ -8,6 +8,7 @@ import { putFile } from '@/lib/blobStore';
 import { readBlocks, sentencesFromBlocks } from '@/lib/docx/model';
 import { loadAccount } from '@/lib/account';
 import { getFromHistory, getSettings, llmMode, saveToHistory, useSettings } from '@/lib/store';
+import type { FileForensics } from '@/lib/forensics/types';
 import type { Analysis } from '@/lib/types';
 import { InputPanel } from './InputPanel';
 import { ResultsView } from './results/ResultsView';
@@ -73,15 +74,15 @@ export function Workspace() {
     }
   }
 
-  function start(text: string, title: string, context: string) {
-    const a = initialAnalysis(text, title, context, settings);
+  function start(text: string, title: string, context: string, file?: FileForensics) {
+    const a = initialAnalysis(text, title, context, settings, { file });
     router.replace(`/?id=${a.id}`);
     run(a);
   }
 
-  async function startDocx(bytes: ArrayBuffer, fileName: string, title: string, context: string) {
+  async function startDocx(bytes: ArrayBuffer, fileName: string, title: string, context: string, file?: FileForensics) {
     const sentences = sentencesFromBlocks(await readBlocks(bytes));
-    const a = initialAnalysis('', title || fileName.replace(/\.docx$/i, ''), context, settings, { sentences, source: { kind: 'docx', fileName } });
+    const a = initialAnalysis('', title || fileName.replace(/\.docx$/i, ''), context, settings, { sentences, source: { kind: 'docx', fileName }, file });
     await putFile(a.id, bytes);
     router.replace(`/?id=${a.id}`);
     run(a);
@@ -125,7 +126,7 @@ export function Workspace() {
       const h = heuristicScore(hits);
       results[s.id] = { id: s.id, heuristic: h, probability: h, hits, patterns: hits.map((x) => x.patternId), status: 'heuristic-only', edited: true };
     }
-    update({ ...analysis, sentences, results, overall: { ...overallScore(sentences, results, undefined, analysis.document), summary: analysis.overall.summary }, stats: computeStats(sentences) });
+    update({ ...analysis, sentences, results, overall: { ...overallScore(sentences, results, undefined, analysis.document, analysis.file), summary: analysis.overall.summary }, stats: computeStats(sentences) });
   }
 
   if (!analysis) return <InputPanel onAnalyze={start} onAnalyzeDocx={startDocx} />;
@@ -140,7 +141,7 @@ export function Workspace() {
       onToggleIgnore={(id) => {
         const r = analysis.results[id];
         const results = { ...analysis.results, [id]: { ...r, ignored: !r.ignored } };
-        const next = { ...analysis, results, overall: { ...overallScore(analysis.sentences, results, undefined, analysis.document), summary: analysis.overall.summary } };
+        const next = { ...analysis, results, overall: { ...overallScore(analysis.sentences, results, undefined, analysis.document, analysis.file), summary: analysis.overall.summary } };
         setAnalysis(next);
         saveToHistory(next);
       }}

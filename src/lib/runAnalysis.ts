@@ -6,6 +6,7 @@ import { getAccount } from './account';
 import { llmMode } from './store';
 import { currentLocale } from './i18n/dom';
 import { getDict } from './i18n';
+import type { FileForensics } from './forensics/types';
 import type { Analysis, AnalyzeChunkRequest, AnalyzeChunkResponse, AssessRequest, AssessResponse, DocumentAssessment, Lang, Sentence, SentenceResult, Settings } from './types';
 
 export type ChunkStatus = 'pending' | 'running' | 'done' | 'failed';
@@ -30,7 +31,7 @@ export function initialAnalysis(
   title: string,
   context: string,
   settings: Settings,
-  opts?: { sentences?: Sentence[]; source?: Analysis['source'] },
+  opts?: { sentences?: Sentence[]; source?: Analysis['source']; file?: FileForensics },
 ): Analysis {
   const sentences = opts?.sentences ?? segment(text);
   const results = heuristicResults(sentences);
@@ -46,7 +47,7 @@ export function initialAnalysis(
     context,
     sentences,
     results,
-    overall: overallScore(sentences, results, undefined, document),
+    overall: overallScore(sentences, results, undefined, document, opts?.file),
     stats: computeStats(sentences),
     document,
     meta: {
@@ -58,6 +59,7 @@ export function initialAnalysis(
       mode: mode ?? undefined,
     },
     source: opts?.source,
+    file: opts?.file,
   };
 }
 
@@ -124,7 +126,7 @@ export async function enrich(
   let summary: string | undefined = a.overall.summary;
 
   const emit = () => {
-    const ov = overallScore(a.sentences, a.results, llmOverall.length ? llmOverall.reduce((x, y) => x + y, 0) / llmOverall.length : undefined, a.document);
+    const ov = overallScore(a.sentences, a.results, llmOverall.length ? llmOverall.reduce((x, y) => x + y, 0) / llmOverall.length : undefined, a.document, a.file);
     a = { ...a, overall: { ...ov, summary: a.document?.summary || summary } };
     onUpdate(a, { chunks: progress.chunks.map((c) => ({ ...c })) });
   };
@@ -267,7 +269,7 @@ export function applyRewrite(a: Analysis, id: number, text: string): Analysis {
     [id]: { ...a.results[id], heuristic: h, hits, patterns: hits.map((x) => x.patternId), llm: undefined, decision: undefined, probability: h, explanation: undefined, rewrite: null, edited: true, status: 'heuristic-only' as const },
   };
   const document = a.document ? { ...a.document, ...localDocument(sentences, results), status: a.document.status } : undefined;
-  return { ...a, sentences, results, document, overall: { ...overallScore(sentences, results, undefined, document), summary: a.overall.summary }, stats: computeStats(sentences) };
+  return { ...a, sentences, results, document, overall: { ...overallScore(sentences, results, undefined, document, a.file), summary: a.overall.summary }, stats: computeStats(sentences) };
 }
 
 /** Paragraphs with their index, as sent to the document pass. */
