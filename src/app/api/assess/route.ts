@@ -2,6 +2,8 @@ import { ASSESS_SYSTEM_PROMPT, DOC_DECISION_QUESTION, buildAssessUserPrompt } fr
 import { getEntitlement } from '@/lib/server/entitlement';
 import { json, readJson } from '@/lib/server/http';
 import { ProviderError, chatJson, decideDocument, parseJsonLoose, publicError, fairUseGate, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
+import { MAX_DOC_WORDS } from '@/lib/limits';
+import { countWords } from '@/lib/segment';
 import type { AssessRequest, AssessResponse } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -34,7 +36,13 @@ function sample(paragraphs: { i: number; text: string }[]) {
 /** Whole-document authorship assessment: language model verdict + optional decision-model verdict. */
 export async function POST(req: Request) {
   const b = await readJson<AssessRequest>(req);
-  if (!b || !Array.isArray(b.paragraphs) || !b.paragraphs.length) return json({ error: 'bad_request' }, { status: 400 });
+  if (!b || !Array.isArray(b.paragraphs) || !b.paragraphs.length || !b.paragraphs.every((p) => p && typeof p.text === 'string')) {
+    return json({ error: 'bad_request' }, { status: 400 });
+  }
+  // same limit the input form shows; a little slack for differences in how the text was split
+  if (b.paragraphs.reduce((n, p) => n + countWords(p.text), 0) > MAX_DOC_WORDS * 1.05) {
+    return json({ error: 'too_long' }, { status: 413 });
+  }
   const ent = await getEntitlement(req);
   const secrets = [b.apiKey, b.openrouterKey];
   const shown = sample(b.paragraphs);

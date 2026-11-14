@@ -2,6 +2,7 @@ import { REWRITE_SYSTEM_PROMPT } from '@/lib/prompts';
 import { getEntitlement } from '@/lib/server/entitlement';
 import { json, readJson } from '@/lib/server/http';
 import { ProviderError, chatJson, parseJsonLoose, enforceFairUse, publicError, resolveAccess } from '@/lib/server/llm';
+import { MAX_CONTEXT_CHARS } from '@/lib/limits';
 import type { ProviderId } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -18,7 +19,7 @@ interface Body {
 
 export async function POST(req: Request) {
   const b = await readJson<Body>(req);
-  if (!b || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 8000) return json({ error: 'bad_request' }, { status: 400 });
+  if (!b || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 8000 || (b.context != null && (typeof b.context !== 'string' || b.context.length > MAX_CONTEXT_CHARS))) return json({ error: 'bad_request' }, { status: 400 });
   try {
     const ent = await getEntitlement(req);
     const access = resolveAccess(ent, b);

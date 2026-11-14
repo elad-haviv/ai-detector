@@ -3,6 +3,8 @@ import { PATTERNS } from '@/lib/patterns/catalog';
 import { getEntitlement } from '@/lib/server/entitlement';
 import { json, readJson } from '@/lib/server/http';
 import { ProviderError, chatJson, decide, parseJsonLoose, publicError, fairUseGate, resolveAccess, resolveDecisionKey } from '@/lib/server/llm';
+import { MAX_CHUNK_SENTENCES, MAX_CHUNK_WORDS, MAX_CONTEXT_CHARS } from '@/lib/limits';
+import { countWords } from '@/lib/segment';
 import type { AnalyzeChunkRequest, AnalyzeChunkResponse, LlmOut } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -12,8 +14,18 @@ const PATTERN_LIST = PATTERNS.map((p) => `${p.id}: ${p.nameEn} (${p.category})`)
 
 export async function POST(req: Request) {
   const body = await readJson<AnalyzeChunkRequest>(req);
-  if (!body || !Array.isArray(body.sentences) || body.sentences.length === 0 || body.sentences.length > 60) {
+  if (
+    !body ||
+    !Array.isArray(body.sentences) ||
+    body.sentences.length === 0 ||
+    body.sentences.length > MAX_CHUNK_SENTENCES ||
+    !body.sentences.every((s) => s && typeof s.text === 'string') ||
+    (body.context != null && (typeof body.context !== 'string' || body.context.length > MAX_CONTEXT_CHARS))
+  ) {
     return json({ error: 'bad_request' }, { status: 400 });
+  }
+  if (body.sentences.reduce((n, s) => n + countWords(s.text), 0) > MAX_CHUNK_WORDS) {
+    return json({ error: 'too_long' }, { status: 413 });
   }
   const ent = await getEntitlement(req);
   const secrets = [body.apiKey, body.openrouterKey];

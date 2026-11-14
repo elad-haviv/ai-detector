@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { dirOf, intlLocale } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n/client';
 import { countWords } from '@/lib/segment';
+import { MAX_CONTEXT_CHARS, MAX_DOC_WORDS } from '@/lib/limits';
 import { useKeys } from '@/lib/keyStore';
 import { llmMode, useSettings } from '@/lib/store';
 import { useAccount } from '@/lib/account';
@@ -14,7 +15,7 @@ import { IconFile, IconUpload } from './icons';
 import { Button, Field, Input, Textarea, useToast } from './ui';
 
 const MIN_WORDS = 25;
-const MAX_WORDS = 20000;
+const MAX_WORDS = MAX_DOC_WORDS;
 
 
 export function InputPanel({
@@ -250,6 +251,7 @@ export function InputPanel({
               placeholder={t.input.contextPlaceholder}
               aria-label={t.input.contextLabel}
               rows={2}
+              maxLength={MAX_CONTEXT_CHARS}
               dir={context ? 'auto' : uiDir}
               className="text-sm"
             />
